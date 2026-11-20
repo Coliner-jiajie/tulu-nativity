@@ -3,8 +3,30 @@
 目标：在「诞临」阶段（铭文攒满、6 个出牌回合）里，求星象与铭文法则的**最优出牌策略**，并分析常规情况下的收益。
 所有收益都以「×ATK」的倍率记录；退场的「忘却前夜」+80.0 在汇总时加上，不影响策略。
 
-> **当前状态**：项目、代码和测试已搭好；**尚未做任何训练、调参或扫描**。
-> 之前在旧规则下得到的扫描结果已作废，仅归档在 `archive/v2_old_rules/`。
+> **当前状态（2026-11-20）**：两条路线都已训练完成。当前最佳单网络 **1295.8 ± 0.3**（含忘却前夜 +80，10 万局评估），
+> 方法 A 参数化最优 1229.9，滚动前瞻专家约 1288~1297。尚未突破 1300（差约 4）；「网络引导的滚动前瞻搜索」试点显示可再高约 +10，正在尝试把它蒸馏回网络。
+> 进度细节见 [`docs/PROGRESS.md`](docs/PROGRESS.md)，失败与原因分析见 [`docs/FAILURES.md`](docs/FAILURES.md)。
+> 旧规则下的结果已作废，仅归档在 `archive/v2_old_rules/`。
+
+## 结果总览（含 +80，评估局数见脚本）
+
+| 策略 | 平均总倍率 |
+|---|---|
+| 随机合法动作 | 691 |
+| 只放牌不打法则 | 873 |
+| 贪心 + 法则 | 1156 |
+| 方法 B：纯 PPO 从零 | 1196 |
+| **方法 A：参数化 + CEM** | **1229.9** |
+| 蒸馏：行为克隆 / DAgger | 1267 / 1268 |
+| 专家：滚动前瞻 R=200 / R=800 | 约 1288 / 约 1297 |
+| PPO 微调 ft1 / ft2 | 1290.4 / 1292.4 |
+| **PPO 微调 ft3（当前最佳单网络，`models/ppo_ft3_last_1296.pt`）** | **1295.8 ± 0.3** |
+| 四模型集成 | 1296.4（仅 +0.5） |
+| 网络 + 搜索（k=3，R=512，改选门槛 4；每局数秒，不是单个网络） | 约 +10，配对差 +9.6 ± 4.7（500 局）；试点阶段 |
+
+做法：先用方法 A 与滚动前瞻专家做**行为克隆 + DAgger 蒸馏**，再对网络做**增强探索的 PPO 微调**。
+试过但不如 PPO 与蒸馏的：**DQN 家族**（离线 Q 最佳 1237，在线微调变差）、多候选补牌、集成。原因分析见 [`docs/FAILURES.md`](docs/FAILURES.md)。
+模型快照与回退点：`models/`（说明见 `models/README.md`）与 git 标签 `v0.3-baseline-1268`、`v0.4-ft1-1290`、`v0.5-ft2-1293`、`v0.6-ft3-1296`、`v0.7-dqn-failed`。
 
 ## 两条路线
 
@@ -16,7 +38,9 @@
 | 代码 | `tulu/param/` | `tulu/rl/` |
 | 依赖 | numba、numpy | 另需 PyTorch |
 
-另有一个检验工具：**滚动前瞻**（`tulu/param/rollout.py`）——每个决策点对每个候选动作用基础策略模拟打完整局，估计参数化策略离最优还有多远。
+另有两个关键工具：
+- **滚动前瞻**（`tulu/param/rollout.py`）——每个决策点对每个候选动作用基础策略模拟打完整局，估计参数化策略离最优还有多远；也用作蒸馏的「专家」（`tulu/rl/expert.py`）。
+- **网络引导的滚动前瞻**（`tulu/rl/nnsearch.py`）——以神经网络为基础策略，对网络前 k 个候选动作各模拟 R 次（共同随机数），仅当候选比网络贪心动作好出一个门槛才改选。思路来自专家迭代（Expert Iteration）。
 
 ## 目录结构
 
@@ -25,7 +49,8 @@ TuluNativity/
 ├── README.md
 ├── environment.yml / requirements.txt / pyproject.toml
 ├── configs/default.json        面板数值 + 规则参数（rho、h 由面板推导）
-├── docs/model_spec.md          形式化模型与全部规则假设 A-01 ~ A-32（均已确认；仅 A-30 中「重衍的丢弃不触发余波」是我的解读，待确认）
+├── docs/                       model_spec.md 形式化模型与全部规则假设；PROGRESS.md 进度；FAILURES.md 失败与原因分析
+│   └──（model_spec.md）          规则假设 A-01 ~ A-32（均已确认；仅 A-30 中「重衍的丢弃不触发余波」是我的解读，待确认）
 ├── tulu/
 │   ├── config.py               读取配置、由面板推导 ρ=DEF/ATK 与 h=H/ATK
 │   ├── env/core.py             ★规则环境（numba），两条路线共用
@@ -37,14 +62,19 @@ TuluNativity/
 │   ├── rl/                     方法 B
 │   │   ├── vec_env.py            向量化环境：36 维动作 + 合法动作掩码 + 94 维观测
 │   │   ├── scenario.py           构造指定局面（检查策略用）
-│   │   ├── networks.py           演员-评论家网络（PyTorch）
+│   │   ├── networks.py           演员-评论家网络、决斗式 Q 网络（PyTorch）
 │   │   ├── ppo.py                PPO 训练（GAE、动作掩码、检查点、日志）
-│   │   └── evaluate.py           评估网络策略
+│   │   ├── evaluate.py           评估网络策略
+│   │   ├── expert.py / distill.py  滚动前瞻专家、行为克隆与 DAgger 蒸馏
+│   │   ├── nnsearch.py           网络引导的滚动前瞻搜索（专家迭代）
+│   │   ├── qexpert.py / qlearn.py  DQN 路线（已验证不如 PPO，留作失败参考）
+│   │   └── ensemble.py           多检查点集成
 │   └── common/                 统计汇总、中文名称
-├── scripts/                    入口脚本（a=方法A，b=方法B，c=对比）
+├── scripts/                    入口脚本（a=方法A，b=方法B，c=对比，d=蒸馏，e=整条流水线，g=集成，h=DQN，i/j/k=网络搜索试点/采集/微调，v=可视化）
 ├── tests/                      pytest
-├── results/{param,rl}/         运行结果（脚本自动写入）
-└── archive/v2_old_rules/       旧规则下的结果与代码（已作废，仅留档）
+├── models/                     关键模型快照（体积小，用于回退）
+├── results/{param,rl}/         运行结果（脚本自动写入，不进 git）
+└── archive/                    v2_old_rules（旧规则，已作废）、failed_dqn（DQN 失败参考的日志与网络）
 ```
 
 ## 在 PyCharm 中打开
@@ -71,9 +101,13 @@ python scripts/a3_rollout_headroom.py --theta results/param/final/theta.json   #
 python scripts/a2_sweep.py --param after --values 0 1 2                        # 参数扫描示例
 
 # 方法 B（需要 PyTorch）
-python scripts/b2_train_ppo.py --name run1             # 训练（可 --resume 续训）
+python scripts/e_pipeline.py --tag demo                # 整条流水线：CEM → 专家数据 → 行为克隆 → DAgger → PPO → 对比（规则/面板更新后一条命令重跑）
+python scripts/b2_train_ppo.py --name run1             # 单独训练（可 --resume 续训；--init-from 从蒸馏网络出发微调）
 python scripts/b3_evaluate_nn.py --ckpt results/rl/run1/best.pt --theta results/param/final/theta.json
 python scripts/b4_inspect_policy.py --ckpt results/rl/run1/best.pt             # 看典型局面下的动作偏好
+
+# 网络引导搜索（试点）
+python scripts/i_nnsearch_pilot.py --games 200 --k 3 --R 512 --margin 4   # 配对比较纯网络与网络+搜索
 
 # 对比
 python scripts/c_compare.py --theta results/param/final/theta.json --ckpt results/rl/run1/best.pt
@@ -85,10 +119,10 @@ python scripts/c_compare.py --theta results/param/final/theta.json --ckpt result
 |---|---|
 | 面板（60 级） | 体质 167、攻击 194、防御 108；三者在诞临阶段均再 +30%；每 100 体质 = 289 生命 |
 | 造物 | 12 个黄金造物 = 24 个等效白银，加法叠加（攻击 +15%/个，防御 +3%/个） |
-| ATK / DEF | 194×1.3×(1+0.15×24) ≈ 1160.1 / 108×1.3×(1+0.03×24) ≈ 241.5 |
-| **ρ = DEF/ATK** | **0.2082** |
-| 最大生命 | 167×1.3×2.89×(1+0.8×6) ≈ 3639（潮蚀失去 6 层） |
-| **h = H/ATK** | **3.137** |
+| ATK / DEF | 初始攻击 337（已含 +30%；2026-11-20 更新），造物后 ATK ≈ 1550.2、DEF ≈ 322.7（防御/生命与攻击同幅缩放） |
+| **ρ = DEF/ATK** | **0.2082**（面板更新后不变） |
+| 最大生命 | ≈ 4862.6（潮蚀失去 6 层） |
+| **h = H/ATK** | **3.137**（不变，所以已有模型与结果仍然有效；变的只是倍率换算成真实伤害） |
 | 铭文 | 初始 50，上限 50；每张法则消耗 5；未使用的法则回合末返还 1（余波） |
 | 手牌上限 | 12（星象与法则共用） |
 | 触腕伤害 | 初值 5%·H，每回合 +1.25%·H，均按攻击力归一；×1.25 的铭文放大只作用于增长与蕴星收益 |
@@ -111,6 +145,8 @@ python scripts/c_compare.py --theta results/param/final/theta.json --ckpt result
 ## 已知局限
 
 - 参数化策略只能表达打分公式覆盖的打法，得到的是最优值的下界；滚动前瞻与神经网络用来检验这一点。
+- 「最优」指对当前模型假设最优；伤害数值公式预计会有一次大更新，届时需用 `scripts/e_pipeline.py` 重跑。
+- 重衍的「丢弃所有手牌」是否触发余波尚未确认（目前按不触发处理）。
 - 向量化环境在并行模式下各线程的随机数状态独立，不能逐步复现；需要复现时用 `VecEnv(..., parallel=False)`。
 - 目前没有在缩小实例上做精确动态规划来验证最优性，列为后续工作。
 
