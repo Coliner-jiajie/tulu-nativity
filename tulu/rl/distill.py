@@ -88,9 +88,10 @@ def train_bc(net, data, device, epochs=20, batch=4096, lr=1e-3, lr_final_frac=0.
 
 # ---------------------------------------------------------------- DAgger
 def dagger_collect(net, env_cfg, theta, n_games, n_envs=1024, K=12, R=100, beta=0.0, seed=0,
-                   device="cpu", log=print):
+                   device="cpu", log=print, eps=0.0):
     """学生策略（以概率 beta 改用专家动作）打 n_games 局，在其访问到的每个状态上向专家取标签。
-    返回 (数据集, 学生贪心策略的每局总倍率)。"""
+    eps>0 时，学生每一步以概率 eps 改走随机合法动作（「冒险」探索，覆盖学生平时走不到的状态，标签仍由专家给出）。
+    返回 (数据集, 学生每局总倍率)。"""
     theta = np.asarray(theta, dtype=np.float64)
     env = VecEnv(env_cfg, n_envs, seed=seed)
     obs, mask = env.reset()
@@ -116,6 +117,9 @@ def dagger_collect(net, env_cfg, theta, n_games, n_envs=1024, K=12, R=100, beta=
         a_stu = a_stu.cpu().numpy()
         use_exp = rng.random(n_envs) < beta
         act = np.where(use_exp & (labels >= 0), labels, a_stu)
+        if eps > 0:
+            for e in np.nonzero(rng.random(n_envs) < eps)[0]:
+                act[e] = rng.choice(np.nonzero(mask[e])[0])
         ok = labels >= 0
         c = cnt[ok]
         e_ok = ar[ok]
