@@ -2,7 +2,8 @@
 
 只用于显示 / 报告，训练、环境、奖励都不 import 本模块，也不读取 configs/display.json。
 乘区关系（按计算器的系统逻辑，已验证）：
-    A      = 面板攻击 × 1.3 × (1 + 0.15 × 白银等效造物数)          （即 derive_from_panel 的 ATK）
+    A      = 面板攻击 × 1.3 × (1 + 0.15 × 白银等效造物数)          （默认取 derive_from_panel 的 ATK；
+             display.json 的 atk_after_bonus 可只改显示口径，不影响训练用的 ρ、h）
     Z      = 1.5                         专武
     C      = 1 + 0.30 + 0.02 × 狂气回充   以此身承负
     M铭    = 1 + 0.025 × 层数；灵塑适性时 1 + 0.05 × 层数
@@ -26,7 +27,13 @@ def _load(path_str):
 def display_params(path=None, config=None):
     """返回换算参数字典：atk、Z、C、Mming、ext、scale、nuke_train、nuke_real 等。"""
     d = _load(str(path or DISPLAY_PATH))
-    atk = derive_from_panel(load_params(config)["panel"])["ATK"]
+    pan = load_params(config)["panel"]
+    dd = derive_from_panel(pan)
+    if d.get("atk_after_bonus") is not None:
+        # 显示口径专用：直接给定「已乘 1.3」之后、造物加成之前的攻击；再乘 (1 + 0.15 × 白银等效造物数)
+        atk = float(d["atk_after_bonus"]) * (1 + pan["silver_atk"] * dd["n_eq"])
+    else:
+        atk = dd["ATK"]
     z = 1.5 if d.get("zhanwu") else 1.0
     c = (1.0 + 0.30 + 0.02 * float(d.get("kuangqi", 0))) if d.get("chengfu") else 1.0
     per = 0.05 if d.get("lingsu") else 0.025

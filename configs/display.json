@@ -1,6 +1,7 @@
 {
   "_comment": "仅用于输出层：把训练口径的归一化倍率（×ATK、含忘却前夜 +80）换算成真实伤害。训练不读取本文件。乘区关系见 calc_site/公式自纠_v1.md。",
-  "atk_source": "panel",
+  "atk_after_bonus": 337,
+  "atk_note": "显示口径：面板 252 乘 1.3 后取 337（用户设定），造物加成另乘。只影响真实伤害显示，训练的 rho/h 仍按 configs/default.json 的面板。",
   "zhanwu": true,
   "chengfu": true,
   "kuangqi": 40,
