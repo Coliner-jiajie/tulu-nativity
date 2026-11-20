@@ -109,7 +109,7 @@ def search_actions(net, SI, SF, cfg, obs, mask, root_seed, k=4, R=32, margin=0.0
     return out, greedy, (best_v, greedy_v)
 
 
-def play_games(net, cfg, n_games, seed0, search=True, k=4, R=32, margin=0.0, device="cpu", log=print):
+def play_games(net, cfg, n_games, seed0, search=True, k=4, R=32, margin=0.0, device="cpu", log=print, record=None):
     """n_games 局同时进行，每局按局号播种（搜索版与纯贪心版使用同一批随机数起点，便于配对比较）。
     返回每局总倍率（不含 +80）和被改选的决策比例。"""
     cfg = np.asarray(cfg, dtype=np.float64)
@@ -131,6 +131,13 @@ def play_games(net, cfg, n_games, seed0, search=True, k=4, R=32, margin=0.0, dev
         if search:
             a, g, info = search_actions(net, SI[idx], SF[idx], cfg, obs[idx], mask[idx],
                                         gseed[idx] * 1000 + step, k=k, R=R, margin=margin, device=device)
+            if record is not None:
+                sel = np.nonzero(mask[idx].sum(1) >= 2)[0]
+                if len(sel):
+                    record["obs"].append(obs[idx][sel].astype(np.float16))
+                    record["mask"].append(mask[idx][sel].copy())
+                    record["act"].append(a[sel].astype(np.int64))
+                    record["greedy"].append(g[sel].astype(np.int64))
             if info is not None:
                 nsearched += int((mask[idx].sum(1) >= 2).sum())
                 changed += int((a != g).sum())
