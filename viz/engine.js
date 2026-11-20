@@ -176,7 +176,14 @@ function playLaw(si, sf, cfg, li, st) {
   } else if (lid === 5) {     // 拓途
     pickDistinct(NL, 3, _out8);
     for (let i = 0; i < 3; i++) addLaw(si, _out8[i], cfg[C_LAWCOST] | 0, cap);
-  } else {                    // 重衍
+  } else {                    // 重衍：丢弃的未使用法则触发余波
+    {
+      const gain = (cfg[C_AFTER] | 0) * si[O_LN], imax = cfg[C_IMAX] | 0;
+      if (gain > 0 && si[O_I] < imax) {
+        const ni = Math.min(imax, si[O_I] + gain);
+        st[ST_REFUND] += ni - si[O_I]; si[O_I] = ni;
+      }
+    }
     for (let i = 0; i < si[O_TN]; i++) si[O_DC + si[O_TO + i]] += 1;
     si[O_TN] = 0;
     for (let i = 0; i < si[O_HN]; i++) si[O_DC + si[O_HO + i]] += 1;

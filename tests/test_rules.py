@@ -129,7 +129,7 @@ def test_conservation():
 
 
 def test_afterglow():
-    """余波：回合末未使用的法则每张 +1 层，上限 50；重衍丢弃手牌不触发余波。"""
+    """余波：回合末未使用的法则每张 +1 层，上限 50；重衍丢弃手牌中的未使用法则同样触发余波。"""
     cfg = make_cfg()
     # 1) 普通回合末：2 张未使用法则 +2
     si, sf, st = fresh(cfg, 5)
@@ -155,13 +155,20 @@ def test_afterglow():
     for c in [cid(0, 1), cid(0, 2), cid(1, 3)]:
         place_star(si, sf, cfg, hand_index(si, c), st)
     assert si[O_I] == 50
-    # 4) 重衍：I=40，手里有 重衍 和 另一张未用法则 -> 打出重衍 -5，另一张被丢弃但不触发余波
+    # 4) 重衍：I=40，手里有 重衍 和 另一张未用法则 -> 打出重衍 -5，另一张被丢弃并触发余波 +1 -> 36
     si, sf, st = fresh(cfg, 8)
     set_hand(si, [cid(0, 1), cid(0, 2), cid(1, 3), cid(2, 4)])
     set_laws(si, [(6, 5), (0, 5)])
     si[O_I] = 40
     play_law(si, sf, cfg, law_index(si, 6), st)
-    assert si[O_I] == 35, si[O_I]
+    assert si[O_I] == 36, si[O_I]
+    # 5) 重衍丢弃 2 张其他法则、I=49 -> -5 后 44，+2 = 46；上限 50 同样适用（I=50 -> 45 -> +2 = 47）
+    si, sf, st = fresh(cfg, 10)
+    set_hand(si, [cid(0, 1), cid(0, 2), cid(1, 3), cid(2, 4)])
+    set_laws(si, [(6, 5), (0, 5), (1, 5)])
+    si[O_I] = 49
+    play_law(si, sf, cfg, law_index(si, 6), st)
+    assert si[O_I] == 46, si[O_I]
 
 
 def test_hand_cap():
@@ -198,7 +205,7 @@ def test_bank_then_rebirth():
     play_law(si, sf, cfg, law_index(si, 6), st)
     assert abs(sf[F_R] - 28.8) < 1e-9            # 清空星轨不退还也不扣除
     assert si[O_TN] == 0 and si[O_HN] == 4 and si[O_LN] == 2 and si[O_T] == 1
-    assert si[O_I] == 45
+    assert si[O_I] == 46                          # 50-5=45，被丢弃的另一张法则触发余波 +1
     assert st[ST_CYBANK] == 1
     tot = (si[O_DP:O_DP + NT].sum() + si[O_DC:O_DC + NT].sum() + si[O_HN] + si[O_TN])
     assert tot == 45

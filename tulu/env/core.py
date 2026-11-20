@@ -3,7 +3,7 @@
 规则与假设见 ../诞临阶段建模_v0.1.md（A-01 ~ A-32）。伤害全部以「×ATK」为单位记录。
 
 v3 相对 v2 的变化：
-  * 余波：回合结束时自动弃置的未使用法则，每张使记忆铭文 +1（上限 imax=50）。重衍的「丢弃手牌」不触发余波。
+  * 余波：回合结束时自动弃置的未使用法则，每张使记忆铭文 +1（上限 imax=50）。重衍丢弃的手牌中的未使用法则同样触发余波（用户确认，2026-11-20）。
   * 手牌已满 12 时，新获得的牌无法进入手牌（星象进弃牌堆，法则消失）；昭示选出的法则同样受限。
   * 法则可以在放第 3 张星象之前的任意时刻打出（星轨可以只放 1~2 张）。策略因此新增：
       - 重衍前先把手里最好的两张星象放进星轨「白嫖」卡效；
@@ -352,7 +352,13 @@ def play_law(si, sf, cfg, li, st):
         pick_distinct(NL, 3, out)
         for i in range(3):
             add_law(si, out[i], int(cfg[C_LAWCOST]), cap)
-    else:             # 重衍：清空星轨，丢弃全部手牌（含其他法则，不触发余波），抽 4 张，得 2 张法则
+    else:             # 重衍：清空星轨，丢弃全部手牌（含其他法则；被丢弃的未使用法则触发余波，每张 +after），抽 4 张，得 2 张法则
+        gain = int(cfg[C_AFTER]) * si[O_LN]
+        imax = int(cfg[C_IMAX])
+        if gain > 0 and si[O_I] < imax:
+            new_i = min(imax, si[O_I] + gain)
+            st[ST_REFUND] += new_i - si[O_I]
+            si[O_I] = new_i
         for i in range(si[O_TN]):
             si[O_DC + si[O_TO + i]] += 1
         si[O_TN] = 0
