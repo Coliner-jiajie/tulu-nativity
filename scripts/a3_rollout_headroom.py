@@ -23,12 +23,13 @@ def main():
     ap.add_argument("--games", type=int, default=1000)
     ap.add_argument("--R", type=int, default=200, help="每个候选动作的模拟局数")
     ap.add_argument("--seed", type=int, default=700_000)
+    ap.add_argument("--ntri", type=int, default=1, help="补牌候选方案数")
     a = ap.parse_args()
     cfg = load_cfg(a.config)
     theta = load_theta(a.theta)
     t0 = time.time()
     base = eval_policy(theta, cfg, a.games, a.seed, 12, 0)[:, ST_TOTAL]
-    imp = eval_improved(theta, cfg, a.games, a.seed, 12, a.R)[:, ST_TOTAL]
+    imp = eval_improved(theta, cfg, a.games, a.seed, 12, a.R, a.ntri)[:, ST_TOTAL]
     d = imp - base
     n = a.games
     print(f"基础策略   {base.mean() + final_nuke(a.config):.2f} ± {base.std() / np.sqrt(n):.2f}")

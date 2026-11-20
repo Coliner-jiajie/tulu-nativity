@@ -90,6 +90,74 @@ def best_completion(hc, hn, trc, tn, B, t, cfg, theta, plan):
 
 
 @njit(cache=True)
+def _ins(plans, scs, n, k, sc, c0, c1, c2):
+    """把方案 (c0,c1,c2) 插入前 k 名列表（去重，满了则替换最差者）。返回新的个数。"""
+    for q in range(n):
+        if plans[q, 0] == c0 and plans[q, 1] == c1 and plans[q, 2] == c2:
+            return n
+    if n < k:
+        plans[n, 0] = c0
+        plans[n, 1] = c1
+        plans[n, 2] = c2
+        scs[n] = sc
+        return n + 1
+    wi = 0
+    for q in range(1, n):
+        if scs[q] < scs[wi]:
+            wi = q
+    if sc > scs[wi]:
+        plans[wi, 0] = c0
+        plans[wi, 1] = c1
+        plans[wi, 2] = c2
+        scs[wi] = sc
+    return n
+
+
+@njit(cache=True)
+def top_completions(hc, hn, trc, tn, B, t, cfg, theta, k, plans, scs):
+    """补满星轨的前 k 个不同方案（按基础策略打分）。plans[q] = 三个槽位的牌。返回个数。"""
+    s = 3 - tn
+    n = 0
+    if hn < s:
+        return 0
+    if s == 3:
+        for i in range(hn):
+            for j in range(i + 1, hn):
+                for m in range(j + 1, hn):
+                    a = hc[i]
+                    b = hc[j]
+                    c = hc[m]
+                    fa = f_of(a // 5, cfg)
+                    fb = f_of(b // 5, cfg)
+                    fc = f_of(c // 5, cfg)
+                    if fa > fb:
+                        a, b = b, a
+                        fa, fb = fb, fa
+                    if fb > fc:
+                        b, c = c, b
+                        fb, fc = fc, fb
+                    if fa > fb:
+                        a, b = b, a
+                        fa, fb = fb, fa
+                    n = _ins(plans, scs, n, k, score_final(a, b, c, 0, B, t, cfg, theta), a, b, c)
+    elif s == 2:
+        p0 = trc[0]
+        for i in range(hn):
+            for j in range(i + 1, hn):
+                a = hc[i]
+                b = hc[j]
+                if f_of(a // 5, cfg) > f_of(b // 5, cfg):
+                    a, b = b, a
+                n = _ins(plans, scs, n, k, score_final(p0, a, b, 1, B, t, cfg, theta), p0, a, b)
+    else:
+        p0 = trc[0]
+        p1 = trc[1]
+        for i in range(hn):
+            n = _ins(plans, scs, n, k, score_final(p0, p1, hc[i], 2, B, t, cfg, theta), p0, p1, hc[i])
+    return n
+
+
+@njit(cache=True)
 def sample_draw(dpc):
     tot = 0
     for c in range(NT):

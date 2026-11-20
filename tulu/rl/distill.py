@@ -88,7 +88,7 @@ def train_bc(net, data, device, epochs=20, batch=4096, lr=1e-3, lr_final_frac=0.
 
 # ---------------------------------------------------------------- DAgger
 def dagger_collect(net, env_cfg, theta, n_games, n_envs=1024, K=12, R=100, beta=0.0, seed=0,
-                   device="cpu", log=print, eps=0.0):
+                   device="cpu", log=print, eps=0.0, ntri=1):
     """学生策略（以概率 beta 改用专家动作）打 n_games 局，在其访问到的每个状态上向专家取标签。
     eps>0 时，学生每一步以概率 eps 改走随机合法动作（「冒险」探索，覆盖学生平时走不到的状态，标签仍由专家给出）。
     返回 (数据集, 学生每局总倍率)。"""
@@ -111,7 +111,7 @@ def dagger_collect(net, env_cfg, theta, n_games, n_envs=1024, K=12, R=100, beta=
     while finished < n_games:
         step += 1
         r_before = env.SF[:, F_R].copy()
-        label_batch(env.SI, env.SF, env.cfg, theta, K, R, seed * 100_000_000 + step * n_envs, labels)
+        label_batch(env.SI, env.SF, env.cfg, theta, K, R, ntri, seed * 100_000_000 + step * n_envs, labels)
         with torch.no_grad():
             a_stu, _, _ = net.act(torch.from_numpy(obs).to(device), torch.from_numpy(mask).to(device), greedy=True)
         a_stu = a_stu.cpu().numpy()

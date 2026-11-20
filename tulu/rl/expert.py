@@ -29,12 +29,14 @@ def law_action(si, li):
 
 
 @njit(cache=True)
-def decide(si, sf, theta, cfg, K, R, sb, plan0):
+def decide(si, sf, theta, cfg, K, R, ntri, sb, plan0):
     """滚动前瞻决策。返回 (kind, a, l1, l2)；plan0 写入补满星轨的方案。把当前状态视为一个全新的决策点。"""
     t = int(si[O_T])
     hn = si[O_HN]
     tn = si[O_TN]
     out = np.zeros(2, dtype=np.int64)
+    plans = np.zeros((8, 3), dtype=np.int64)
+    scs = np.zeros(8)
     V0 = best_completion(si[O_HC:O_HC + 16], hn, si[O_TC:O_TC + 3], tn, sf[F_B], t, cfg, theta, plan0)
     if si[O_PN] > 0:
         bv = -1e18
@@ -51,9 +53,19 @@ def decide(si, sf, theta, cfg, K, R, sb, plan0):
     bl1 = -1
     bl2 = -1
     if V0 > -1e17:
-        best = action_value(si, sf, theta, cfg, K, R, sb, KIND_FINISH, 0, -1, -1,
-                            plan0[0], plan0[1], plan0[2])
-        bkind = KIND_FINISH
+        nk = top_completions(si[O_HC:O_HC + 16], hn, si[O_TC:O_TC + 3], tn, sf[F_B], t, cfg, theta,
+                             min(ntri, 8), plans, scs)
+        bq = 0
+        for q in range(nk):
+            v = action_value(si, sf, theta, cfg, K, R, sb, KIND_FINISH, 0, -1, -1,
+                             plans[q, 0], plans[q, 1], plans[q, 2])
+            if v > best:
+                best = v
+                bkind = KIND_FINISH
+                bq = q
+        if bkind == KIND_FINISH:
+            for z in range(3):
+                plan0[z] = plans[bq, z]
     for li in range(si[O_LN]):
         lid = si[O_LI + li]
         cost = si[O_LC + li]
@@ -110,7 +122,7 @@ def record_step(si, sf, cfg, act, n, obs_b, mask_b, act_b, r_b):
 
 
 @njit(cache=True)
-def expert_game(theta, cfg, K, R, gseed, obs_b, mask_b, act_b, r_b, ret_b, st):
+def expert_game(theta, cfg, K, R, ntri, gseed, obs_b, mask_b, act_b, r_b, ret_b, st):
     """专家打一整局并逐个原子动作记录。返回记录条数。"""
     si = np.zeros(SI_LEN, dtype=np.int64)
     sf = np.zeros(SF_LEN)
@@ -122,7 +134,7 @@ def expert_game(theta, cfg, K, R, gseed, obs_b, mask_b, act_b, r_b, ret_b, st):
     while si[O_DONE] == 0 and dec < 600:
         dec += 1
         sb = gseed * 7919 + dec * 104729
-        kind, a, l1, l2 = decide(si, sf, theta, cfg, K, R, sb, plan0)
+        kind, a, l1, l2 = decide(si, sf, theta, cfg, K, R, ntri, sb, plan0)
         if kind == KIND_OPTION:
             record_step(si, sf, cfg, first_primitive(si, kind, a, l1, l2, plan0), n, obs_b, mask_b, act_b, r_b)
             n += 1
@@ -159,16 +171,16 @@ def expert_game(theta, cfg, K, R, gseed, obs_b, mask_b, act_b, r_b, ret_b, st):
 
 
 @njit(parallel=True, cache=True)
-def expert_games_batch(theta, cfg, n_games, seed0, K, R, obs_b, mask_b, act_b, ret_b, cnt, totals):
+def expert_games_batch(theta, cfg, n_games, seed0, K, R, ntri, obs_b, mask_b, act_b, ret_b, cnt, totals):
     for g in prange(n_games):
         r_b = np.zeros(MAXS)
         st = np.zeros(ST_LEN)
-        cnt[g] = expert_game(theta, cfg, K, R, seed0 + g, obs_b[g], mask_b[g], act_b[g], r_b, ret_b[g], st)
+        cnt[g] = expert_game(theta, cfg, K, R, ntri, seed0 + g, obs_b[g], mask_b[g], act_b[g], r_b, ret_b[g], st)
         totals[g] = st[ST_TOTAL]
 
 
 @njit(parallel=True, cache=True)
-def label_batch(SI, SF, cfg, theta, K, R, seed0, labels):
+def label_batch(SI, SF, cfg, theta, K, R, ntri, seed0, labels):
     """对每个并行环境的当前状态，返回专家的原子动作。不修改环境状态。"""
     for e in prange(SI.shape[0]):
         si = SI[e].copy()
@@ -176,14 +188,14 @@ def label_batch(SI, SF, cfg, theta, K, R, seed0, labels):
         si[O_COMMIT] = 0
         plan0 = np.zeros(3, dtype=np.int64)
         np.random.seed(seed0 + e)
-        kind, a, l1, l2 = decide(si, sf, theta, cfg, K, R, (seed0 + e) * 7919 + 13, plan0)
+        kind, a, l1, l2 = decide(si, sf, theta, cfg, K, R, ntri, (seed0 + e) * 7919 + 13, plan0)
         if kind < 0:
             labels[e] = -1
         else:
             labels[e] = first_primitive(si, kind, a, l1, l2, plan0)
 
 
-def generate_expert_dataset(theta, cfg, n_games, seed0=1_000_000, K=12, R=200, chunk=500, log=print):
+def generate_expert_dataset(theta, cfg, n_games, seed0=1_000_000, K=12, R=200, chunk=500, log=print, ntri=1):
     """让专家打 n_games 局并记录。返回 dict(obs float16, mask bool, act int64, ret float32, totals)。"""
     theta = np.asarray(theta, dtype=np.float64)
     cfg = np.asarray(cfg, dtype=np.float64)
@@ -197,7 +209,7 @@ def generate_expert_dataset(theta, cfg, n_games, seed0=1_000_000, K=12, R=200, c
         ret_b = np.zeros((n, MAXS))
         cnt = np.zeros(n, dtype=np.int64)
         totals = np.zeros(n)
-        expert_games_batch(theta, cfg, n, seed0 + done, K, R, obs_b, mask_b, act_b, ret_b, cnt, totals)
+        expert_games_batch(theta, cfg, n, seed0 + done, K, R, ntri, obs_b, mask_b, act_b, ret_b, cnt, totals)
         for g in range(n):
             c = cnt[g]
             O.append(obs_b[g, :c].astype(np.float16))

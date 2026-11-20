@@ -49,7 +49,7 @@ def cmd_gen(a):
     theta = load_theta(a.theta)
     t0 = time.time()
     data = generate_expert_dataset(theta, cfg, a.games, seed0=a.seed0, K=12, R=a.R, chunk=a.chunk,
-                                   log=lambda s: print(s, flush=True))
+                                   log=lambda s: print(s, flush=True), ntri=a.ntri)
     out = DIST / f"{a.name}.npz"
     save_dataset(out, data)
     t = data["totals"]
@@ -94,7 +94,7 @@ def cmd_dagger(a):
         t0 = time.time()
         beta = a.beta0 * (0.5 ** (rd - 1))
         new, stu_totals = dagger_collect(net, cfg, theta, a.games, n_envs=a.envs, K=12, R=a.R, beta=beta,
-                                         seed=rd + a.seed_offset, device=dev, log=log, eps=a.eps)
+                                         seed=rd + a.seed_offset, device=dev, log=log, eps=a.eps, ntri=a.ntri)
         save_dataset(out / f"round{rd}_new.npz", new)
         print(f"[DAgger 第{rd}轮] β={beta:.2f} 学生访问状态 {len(new['act'])} 条；"
               f"收集阶段学生平均 {stu_totals.mean() + nuke:.2f}；用时 {time.time() - t0:.0f}s", flush=True)
@@ -117,6 +117,7 @@ def main():
     g.add_argument("--games", type=int, default=2000)
     g.add_argument("--R", type=int, default=200)
     g.add_argument("--chunk", type=int, default=500)
+    g.add_argument("--ntri", type=int, default=1, help="专家的补牌候选方案数")
     g.add_argument("--seed0", type=int, default=1_000_000)
     g.add_argument("--name", default="expert")
     b = sub.add_parser("bc")
@@ -142,6 +143,7 @@ def main():
     d.add_argument("--lr", type=float, default=5e-4)
     d.add_argument("--eval-games", type=int, default=20000)
     d.add_argument("--seed-offset", type=int, default=0)
+    d.add_argument("--ntri", type=int, default=1, help="专家的补牌候选方案数")
     d.add_argument("--eps", type=float, default=0.0, help="探索：学生每步以此概率改走随机合法动作")
     a = ap.parse_args()
     {"gen": cmd_gen, "bc": cmd_bc, "dagger": cmd_dagger}[a.cmd](a)

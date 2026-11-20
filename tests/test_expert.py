@@ -9,7 +9,7 @@ from tulu.rl.vec_env import VecEnv
 
 def test_expert_actions_are_legal():
     cfg = load_cfg()
-    data = generate_expert_dataset(default_theta(), cfg, 24, seed0=5, K=6, R=8, chunk=24, log=lambda s: None)
+    data = generate_expert_dataset(default_theta(), cfg, 24, seed0=5, K=6, R=8, chunk=24, log=lambda s: None, ntri=3)
     n = len(data["act"])
     assert n > 24 * 20
     # 记录的动作都在合法掩码里
@@ -24,6 +24,6 @@ def test_label_batch_returns_legal_actions():
     env = VecEnv(cfg, 16, seed=3, parallel=False)
     obs, mask = env.reset()
     labels = np.zeros(16, dtype=np.int64)
-    label_batch(env.SI, env.SF, env.cfg, default_theta(), 6, 8, 123, labels)
+    label_batch(env.SI, env.SF, env.cfg, default_theta(), 6, 8, 3, 123, labels)
     assert (labels >= 0).all()
     assert mask[np.arange(16), labels].all()

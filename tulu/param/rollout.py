@@ -44,13 +44,16 @@ def action_value(si, sf, theta, cfg, K, R, seed_base, kind, a, l1, l2, p1, p2, p
 
 
 @njit(cache=True)
-def improved_game(theta, cfg, K, R, gseed, st):
+def improved_game(theta, cfg, K, R, ntri, gseed, st):
     si = np.zeros(SI_LEN, dtype=np.int64)
     sf = np.zeros(SF_LEN)
     np.random.seed(gseed)
     init_game(si, sf, cfg)
     dec = 0
     plan0 = np.zeros(3, dtype=np.int64)
+    bplan = np.zeros(3, dtype=np.int64)
+    plans = np.zeros((8, 3), dtype=np.int64)
+    scs = np.zeros(8)
     out = np.zeros(2, dtype=np.int64)
     while si[O_DONE] == 0 and dec < 600:
         dec += 1
@@ -77,9 +80,16 @@ def improved_game(theta, cfg, K, R, gseed, st):
             bl1 = -1
             bl2 = -1
             if V0 > -1e17:
-                best = action_value(si, sf, theta, cfg, K, R, sb, KIND_FINISH, 0, -1, -1,
-                                    plan0[0], plan0[1], plan0[2])
-                bkind = KIND_FINISH
+                nk = top_completions(si[O_HC:O_HC + 16], hn, si[O_TC:O_TC + 3], tn, sf[F_B], t, cfg, theta,
+                                     min(ntri, 8), plans, scs)
+                for q in range(nk):
+                    v = action_value(si, sf, theta, cfg, K, R, sb, KIND_FINISH, 0, -1, -1,
+                                     plans[q, 0], plans[q, 1], plans[q, 2])
+                    if v > best:
+                        best = v
+                        bkind = KIND_FINISH
+                        for z in range(3):
+                            bplan[z] = plans[q, z]
             for li in range(si[O_LN]):
                 lid = si[O_LI + li]
                 cost = si[O_LC + li]
@@ -112,9 +122,9 @@ def improved_game(theta, cfg, K, R, gseed, st):
             if bkind == KIND_LAW:
                 apply_action(si, sf, cfg, KIND_LAW, ba, bl1, bl2, 0, 0, 0, st)
             elif bkind == KIND_FINISH:
-                si[O_PLAN] = plan0[0]
-                si[O_PLAN + 1] = plan0[1]
-                si[O_PLAN + 2] = plan0[2]
+                si[O_PLAN] = bplan[0]
+                si[O_PLAN + 1] = bplan[1]
+                si[O_PLAN + 2] = bplan[2]
                 si[O_COMMIT] = 1
             else:
                 break
@@ -125,8 +135,8 @@ def improved_game(theta, cfg, K, R, gseed, st):
 
 
 @njit(parallel=True, cache=True)
-def eval_improved(theta, cfg, n, seed0, K, R):
+def eval_improved(theta, cfg, n, seed0, K, R, ntri):
     out = np.zeros((n, ST_LEN))
     for g in prange(n):
-        improved_game(theta, cfg, K, R, seed0 + g, out[g])
+        improved_game(theta, cfg, K, R, ntri, seed0 + g, out[g])
     return out
