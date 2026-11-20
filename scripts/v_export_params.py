@@ -8,9 +8,9 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tulu.config import load_cfg, final_nuke, ROOT
+from tulu.config import load_cfg, final_nuke, load_params, derive_from_panel, ROOT
 from tulu.param.cem import load_theta
-from tulu.display import display_params
+from tulu.display import display_params, _load, DISPLAY_PATH
 
 
 def main():
@@ -18,9 +18,17 @@ def main():
     out = {"cfg": [float(x) for x in cfg], "theta": [float(x) for x in load_theta(ROOT / "results/param/final/theta.json")],
            "nuke": final_nuke()}
     p = display_params()
+    pan = load_params()["panel"]
+    d = derive_from_panel(pan)
     out["real"] = {"scale": round(p["scale"], 4), "nukeReal": p["nuke_real"], "atk": round(p["atk"], 3), "Z": p["Z"],
                    "C": round(p["C"], 4), "Mming": round(p["Mming"], 4), "kuangqi": p["kuangqi"],
-                   "lingsu": p["lingsu"], "beizhao": p["beizhao"]}
+                   "lingsu": p["lingsu"], "beizhao": p["beizhao"], "zhanwu": p["zhanwu"], "chengfu": p["chengfu"],
+                   "mingLayers": p["ming_layers"],
+                   "atkAfterBonus": _load(str(DISPLAY_PATH)).get("atk_after_bonus"), "level": 90}   # 90 级神图（用户设定）
+    # 当前面板（页面顶部展示）：造物数、训练口径的 ATK/ρ/h，供核对
+    out["panel"] = {"gold": pan["gold"], "silver": pan["silver"], "silverEq": d["n_eq"], "silverAtk": pan["silver_atk"],
+                    "silverDef": pan["silver_def"], "trainAtk": round(d["ATK"], 2), "rho": round(d["rho"], 4),
+                    "h": round(d["h"], 3), "tideLost": pan["tide_layers_lost"]}
     txt = "window.TULU_PARAMS = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n"
     try:
         import torch

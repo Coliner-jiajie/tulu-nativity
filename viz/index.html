@@ -189,6 +189,14 @@ body:not(.play) .pl{display:none!important}
 #pickov .pc:hover{transform:translateY(-8px) scale(1.04)}
 #pickov .pc .face{box-shadow:0 0 0 2px var(--gold),0 0 30px rgba(242,193,78,.5)}
 #pickov .pc .ds{font-size:.7em}
+#panelbar{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:8px 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
+#panelbar .pl0{color:var(--mut);font-size:12.5px;letter-spacing:.12em;margin-right:4px}
+#panelbar .pchip{display:inline-flex;gap:6px;align-items:baseline;padding:2px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.04);font-size:12.5px;cursor:default}
+#panelbar .pchip i{font-style:normal;color:var(--mut)}
+#panelbar .pchip b{color:var(--gold);font-variant-numeric:tabular-nums}
+#panelbar .pchip.dv b{color:var(--tx)}
+#panelbar .sep2{width:1px;height:16px;background:var(--line);margin:0 4px}
+#panelbar .eq{width:100%;font-size:12px;color:var(--mut)}
 </style>
 </head>
 <body>
@@ -212,6 +220,7 @@ body:not(.play) .pl{display:none!important}
   <span class="sub pl">同一种子 = 同样的开局；重开并做同样的操作，结果完全一样</span>
   <div class="pdesc rep" id="pdesc"></div>
 </header>
+<div id="panelbar"></div>
 
 <main>
   <section>
@@ -426,7 +435,7 @@ function floatText(txt, x, y, color, cls=""){
 }
 const KCOL = ["#ff8a80","#5eead4","#c4b5fd"];
 // 真实伤害换算（输出层）：真实伤害 = 倍率 × REAL.scale；训练口径忘却前夜 +80，真实口径 +REAL.nukeReal
-const REAL = (typeof META!=="undefined" && META.real) ? META.real : null;
+const REAL = (window.TULU_PARAMS && TULU_PARAMS.real) || ((typeof META!=="undefined" && META.real) ? META.real : null);
 function fmtDmg(v){ const a=Math.abs(v); return a>=1e8 ? (v/1e8).toFixed(3)+" 亿" : a>=1e4 ? (v/1e4).toFixed(1)+" 万" : v.toFixed(0); }
 function realOf(r){ return REAL ? r*REAL.scale : null; }
 function realTotal(rTurns){ return REAL ? (rTurns+REAL.nukeReal)*REAL.scale : null; }
@@ -848,6 +857,28 @@ function setMode(m, ep){
   }
 }
 
+/* ---------- 当前面板（本页使用的系数） ---------- */
+function buildPanelBar(){
+  const Pn = window.TULU_PARAMS && TULU_PARAMS.panel, bar = $("#panelbar");
+  if(!REAL || !Pn){ bar.style.display = "none"; return; }
+  const chip = (k, v, tip, cls="") => `<span class="pchip ${cls}" title="${tip||""}"><i>${k}</i><b>${v}</b></span>`;
+  const h = [`<span class="pl0">当前面板</span>`,
+    chip(`${REAL.level||90} 级神图`, REAL.atkAfterBonus ? "攻击 "+REAL.atkAfterBonus : "", "面板攻击 252 × 1.3（诞临 +30%）= 337，再乘造物加成"),
+    chip("黄金造物", "×"+Pn.gold, "每个黄金造物按 2 个白银造物计"),
+    chip("白银造物", "×"+Pn.silverEq+"（等效）", `攻击 +${Pn.silverAtk*100}% / 个，防御 +${Pn.silverDef*100}% / 个，加法叠加`),
+    chip("记忆铭文", REAL.mingLayers+" 层", "记忆铭文层数（上限 50）"),
+    chip("狂气回充", REAL.kuangqi, "承负乘区 = 1 + 0.30 + 0.02 × 狂气回充"),
+    `<span class="sep2"></span>`];
+  if(REAL.zhanwu) h.push(chip("专武", "×"+REAL.Z, "专武乘区", "dv"));
+  if(REAL.chengfu) h.push(chip("承负", "×"+REAL.C.toFixed(3), `1 + 0.30 + 0.02 × 狂气回充 ${REAL.kuangqi}`, "dv"));
+  h.push(chip("铭文倍率", "×"+REAL.Mming.toFixed(2), REAL.lingsu ? `灵塑适性：1 + 0.05 × ${REAL.mingLayers} 层` : `1 + 0.025 × ${REAL.mingLayers} 层`, "dv"));
+  if(REAL.beizhao) h.push(chip("备诏", "忘却前夜 ×3", "以此碑诏告：忘却前夜 80 → 240", "dv"));
+  h.push(chip("真实伤害系数", "×"+Math.round(REAL.scale), "真实伤害 = 倍率 × ATK × 专武 × 承负 × 铭文倍率", "dv"));
+  h.push(`<span class="sep2"></span>`, chip("策略优化口径", `ρ ${Pn.rho} · h ${Pn.h}`, `训练与策略搜索使用的防攻比 ρ 和生命攻击比 h（训练 ATK ${Pn.trainAtk}）。只有上面的真实伤害显示用右侧换算。`, "dv"));
+  h.push(`<div class="eq">真实伤害 = 倍率 × ATK ${REAL.atk}（= ${REAL.atkAfterBonus||"面板"} × (1 + ${Pn.silverAtk} × ${Pn.silverEq})） × 专武 ${REAL.Z} × 承负 ${REAL.C.toFixed(3)} × 铭文 ${REAL.Mming.toFixed(2)}；忘却前夜 ${REAL.nukeReal}（训练口径 +${META.nuke}）。鼠标移到各项上有说明。</div>`);
+  bar.innerHTML = h.join("");
+}
+
 /* ---------- 初始化 ---------- */
 function init(){
   $("#selPolicy").innerHTML = META.policies.map(p=>`<option value="${p.key}">${p.name}（≈${p.mean}）</option>`).join("");
@@ -904,6 +935,7 @@ function init(){
     <li><b>法则</b>：每张消耗 ${META.lawcost} 层铭文（共 ${META.I0} 层）；回合末未用的法则消散，每张使铭文 +1（余波）。可在放第 3 张前任意时刻打出。</li>
     <li><b>重衍</b>：先把好牌放进星轨「白嫖」卡效，再清空重抽，是本研究发现的关键打法。</li>
     <li><b>手牌上限</b> ${META.cap}（星象与法则共用）。ρ=${META.rho}，h=${META.h}。</li>`;
+  buildPanelBar();
   applyGeo();
   new ResizeObserver(()=>{ const had = EP; if(!had) return; const c = cur; clearStage(); applyGeo(); go(c, false); }).observe(stage);
   const first = META.policies[0].key;
