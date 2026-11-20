@@ -31,7 +31,7 @@ select{background:#141b33;border:1px solid var(--line);border-radius:8px;padding
 .pdesc b{color:var(--gold);font-weight:600}
 
 main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;padding:16px 20px 28px;max-width:1700px;margin:0 auto}
-@media (max-width:1100px){main{grid-template-columns:1fr}}
+@media (max-width:1100px){main{grid-template-columns:minmax(0,1fr)}}
 
 /* HUD */
 #hud{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,.9fr);gap:12px;margin-bottom:12px}
@@ -85,7 +85,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;padding:16p
 #tide .brk{font-size:12px;color:var(--mut)}
 
 /* 卡牌 */
-.card{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);font-size:calc(var(--cw)*.125);
+.card{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);font-size:calc(var(--cw)*var(--fs,.125));touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   transition:transform var(--tm) cubic-bezier(.22,.9,.28,1),opacity calc(var(--tm)*.8) ease,filter .3s;will-change:transform;user-select:none}
 .card.nt{transition:none}
 .face{position:absolute;inset:0;border-radius:calc(var(--cw)*.1);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
@@ -197,6 +197,78 @@ body:not(.play) .pl{display:none!important}
 #panelbar .pchip.dv b{color:var(--tx)}
 #panelbar .sep2{width:1px;height:16px;background:var(--line);margin:0 4px}
 #panelbar .eq{width:100%;font-size:12px;color:var(--mut)}
+#playbar{display:none}
+body.play #playbar{display:flex;position:sticky;bottom:10px;z-index:90;margin-top:10px;gap:10px;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:12px;border:1px solid var(--line);background:rgba(14,19,40,.92);backdrop-filter:blur(8px)}
+#playStatus{font-size:13.5px;line-height:1.4}
+#hintov{position:absolute;inset:0;z-index:118;display:none;flex-direction:column;gap:6px;padding:10px;overflow:auto;background:rgba(6,9,20,.9);backdrop-filter:blur(3px)}
+#hintov .hh{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--gold)}
+.lawnote{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.6}
+.lawnote b{color:var(--tx)}
+.m0{}
+@media (max-width:640px){
+  body{font-size:13.5px}
+  header{padding:8px 12px;gap:6px 8px}
+  header h1{font-size:16px;width:100%}
+  header h1 small,.spacer,#seedHint{display:none}
+  .field{gap:4px}
+  select{min-width:0;padding:5px 6px;font-size:13px;max-width:100%}
+  .field.rep select{max-width:150px}
+  .btn{padding:5px 9px;font-size:13px}
+  .numin{width:70px;padding:5px 6px}
+  .pdesc{font-size:11.5px;margin-top:0}
+  #panelbar{flex-wrap:nowrap;overflow-x:auto;padding:6px 12px;gap:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #panelbar::-webkit-scrollbar{display:none}
+  #panelbar .pchip{flex:none;white-space:nowrap}
+  #panelbar .pl0,#panelbar .sep2{flex:none;white-space:nowrap}
+  #panelbar .eq{display:none}
+  main{padding:8px 10px 20px;gap:10px}
+  #hud{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  #hud>:first-child{grid-column:1/-1}
+  .card-box{padding:8px 10px}
+  .big{font-size:22px}
+  .pip{min-height:46px;padding:3px 2px}
+  .pip .m0{display:none}
+  .pip .v{font-size:13px}
+  #stage{border-radius:14px}
+  #stage .pile .nm{display:none}
+  #stage .pile .chips{flex-direction:column;gap:2px;margin-top:4px}
+  #stage .pile .stack b{font-size:18px}
+  .chips span{font-size:10.5px;padding:0 3px}
+  .slot span{font-size:11px;bottom:-18px}
+  #tide{width:calc(100% - 12px);padding:5px 8px 6px}
+  #tide .pat{font-size:15px;letter-spacing:.2em}
+  #tide .eq{font-size:12.5px}#tide .eq b{font-size:15px}
+  #tide .brk{font-size:11px}
+  #tide .dots i{width:9px;height:9px}
+  #stage.mob .law .ds{display:none}
+  #stage.mob .law .gl{font-size:2em}
+  .zonelab{font-size:11px}
+  #caption{font-size:13.5px;padding:8px 12px;min-height:0}
+  #controls{padding:6px 8px;gap:6px;bottom:6px}
+  #controls .btn{min-width:34px;padding:5px 7px}
+  #controls .kbd{display:none}
+  #scrub{min-width:120px}
+  #pos{min-width:56px;font-size:12px}
+  .fx.banner{font-size:26px}
+  #over .box{min-width:0;width:calc(100% - 24px);padding:16px}
+  #over .n{font-size:40px}
+  #cmp{padding:8px}
+  #cmp .verdict{font-size:13px}
+  #cmp table{min-width:0}
+  #cmp thead{display:none}
+  #cmp table,#cmp tbody,#cmp tr,#cmp td{display:block;width:100%}
+  #cmp tr{margin-bottom:10px;border:1px solid var(--line);border-radius:10px;padding:4px 4px 6px}
+  #cmp td{display:flex;justify-content:space-between;align-items:center;gap:10px;border:0;padding:3px 8px;text-align:right}
+  #cmp td[data-label]::before{content:attr(data-label);color:var(--mut);font-size:12px;flex:none;text-align:left}
+  #cmp td.nm{justify-content:flex-start;font-size:14px;padding-top:6px}
+  #cmp td.wait,#cmp td[colspan].bad{display:block;text-align:left}
+  #cmp .lab{flex-direction:column;gap:2px}
+  #cmp td.act{justify-content:flex-end}
+  #cmp td .sub{display:block}
+  #pickov .t{font-size:14px}
+  #log{max-height:260px}
+  #decision .ti{font-size:13px}
+}
 </style>
 </head>
 <body>
@@ -237,8 +309,10 @@ body:not(.play) .pl{display:none!important}
       <div id="tide" class="idle"></div>
       <div id="over"><div class="box"></div></div>
       <div id="pickov"></div>
+      <div id="hintov"></div>
     </div>
 
+    <div id="playbar" class="pl"><span id="playStatus"></span><button class="btn" id="bHint2">💡 专家建议</button></div>
     <div id="cmp" class="card-box pl" style="display:none"></div>
     <div id="controls" class="rep">
       <button class="btn" id="bFirst" title="回到开头 (Home)">⏮</button>
@@ -295,38 +369,54 @@ function drawStars(){
 
 /* ---------- 几何 ---------- */
 function geo(){
-  const W = stage.clientWidth, H = stage.clientHeight;
-  const cw = Math.max(62, Math.min(96, W*0.085)), ch = cw*1.4;
-  const gap = cw*0.55;
+  const W = stage.clientWidth;
+  const mobile = W < 600;
+  let cw, ch, gap, slotY, tideY, tideH, lawS, lawY, handY, H, pw, ph, margin, perRowH, perRowL, rowStepH, rowStepL, drawX, drawY, discX, discY;
+  if(mobile){
+    cw = Math.max(50, Math.min(64, (W-12)/5.2)); ch = cw*1.4; gap = 12;
+    pw = 44; ph = 62; slotY = 26; margin = 6;
+    tideY = slotY + ch + 30; tideH = 118;
+    lawS = .9; const lch = ch*lawS;
+    lawY = tideY + tideH + 26; rowStepL = lch*.6; perRowL = 6;
+    handY = lawY + lch + rowStepL + 26; rowStepH = ch*.62; perRowH = 6;
+    H = Math.round(handY + ch + rowStepH + 12);
+    if(stage.style.height !== H+"px") stage.style.height = H+"px";
+    drawX = 6; drawY = slotY; discX = W-6-pw; discY = slotY;
+  } else {
+    if(stage.style.height) stage.style.height = "";
+    H = stage.clientHeight;
+    cw = Math.max(62, Math.min(96, W*0.085)); ch = cw*1.4; gap = cw*0.55;
+    slotY = 30; tideY = slotY + ch + 34; tideH = 122;
+    lawS = .84; lawY = tideY + tideH + 8; handY = H - ch - 18;
+    pw = cw; ph = ch; margin = W < 900 ? 90 : 150; perRowH = perRowL = 99; rowStepH = rowStepL = 0;
+    drawX = 16; drawY = 34; discX = W-16-cw; discY = 34;
+  }
   const slotX = j => W/2 + (j-2)*(cw+gap) - cw/2;
-  const slotY = 30;
-  const tideY = slotY + ch + 34, tideH = 122;
-  const lawS = .84, lawY = tideY + tideH + 8;
-  const handY = H - ch - 18;
-  return {W,H,cw,ch,slotX,slotY,tideY,tideH,lawS,lawY,handY,
-    drawX:16, drawY:34, discX:W-16-cw, discY:34};
+  return {W,H,cw,ch,slotX,slotY,tideY,tideH,lawS,lawY,handY,mobile,pw,ph,margin,perRowH,perRowL,rowStepH,rowStepL,drawX,drawY,discX,discY};
 }
 let G = geo();
 function applyGeo(){
   G = geo();
   stage.style.setProperty("--cw", G.cw+"px"); stage.style.setProperty("--ch", G.ch+"px");
+  stage.style.setProperty("--fs", G.mobile ? ".15" : ".125");
+  stage.classList.toggle("mob", G.mobile);
   drawStars();
   // 静态区域
   stage.querySelectorAll(".slot,.pile,.zonelab").forEach(e=>e.remove());
   for(let j=1;j<=3;j++){
     const s = document.createElement("div"); s.className="slot"; s.id="slot"+j;
     s.style.cssText = `left:${G.slotX(j)-4}px;top:${G.slotY-4}px;width:${G.cw+8}px;height:${G.ch+8}px`;
-    s.innerHTML = `<span>第 ${j} 位 · 卡效 ×${j}</span>`; stage.appendChild(s);
+    s.innerHTML = `<span>${G.W<900 ? "×"+j : `第 ${j} 位 · 卡效 ×${j}`}</span>`; stage.appendChild(s);
   }
   for(const [id,x,y,nm] of [["pDraw",G.drawX,G.drawY,"抽牌堆"],["pDisc",G.discX,G.discY,"弃牌堆"]]){
-    const p = document.createElement("div"); p.className="pile"; p.id=id; p.style.cssText=`left:${x}px;top:${y}px;width:${G.cw}px`;
-    p.innerHTML = `<div class="stack" style="height:${G.ch}px"><i style="transform:translate(4px,4px)"></i><i style="transform:translate(2px,2px)"></i><i></i><b>0</b></div><div class="chips"></div><div class="nm">${nm}</div>`;
+    const p = document.createElement("div"); p.className="pile"; p.id=id; p.style.cssText=`left:${x}px;top:${y}px;width:${G.pw}px`;
+    p.innerHTML = `<div class="stack" style="height:${G.ph}px"><i style="transform:translate(4px,4px)"></i><i style="transform:translate(2px,2px)"></i><i></i><b>0</b></div><div class="chips"></div><div class="nm">${nm}</div>`;
     stage.appendChild(p);
   }
   const tide = $("#tide"); tide.style.top = G.tideY+"px";
   tide.style.minHeight = G.tideH+"px";
-  const lb = document.createElement("div"); lb.className="zonelab"; lb.textContent="法则"; lb.style.cssText=`left:16px;top:${G.lawY+6}px`; stage.appendChild(lb);
-  const hb = document.createElement("div"); hb.className="zonelab"; hb.textContent="手牌（星象）"; hb.style.cssText=`left:16px;top:${G.handY-18}px`; stage.appendChild(hb);
+  const lb = document.createElement("div"); lb.className="zonelab"; lb.textContent="法则"; lb.style.cssText=`left:${G.mobile?8:16}px;top:${G.mobile ? G.lawY-18 : G.lawY+6}px`; stage.appendChild(lb);
+  const hb = document.createElement("div"); hb.className="zonelab"; hb.textContent="手牌（星象）"; hb.style.cssText=`left:${G.mobile?8:16}px;top:${G.handY-18}px`; stage.appendChild(hb);
 }
 
 /* ---------- 卡牌元素 ---------- */
@@ -345,6 +435,10 @@ function mkCard(key, type, k){
 }
 const tf = (x,y,s=1,r=0) => `translate(${x}px,${y}px) scale(${s}) rotate(${r}deg)`;
 
+function rowPos(n, i, w, perRow, left, rowStep, y0){
+  const rows = Math.ceil(n/perRow), per = Math.ceil(n/rows), row = Math.floor(i/per), j = i%per, cnt = Math.min(per, n-row*per);
+  return {x: fanX(cnt, j, w, G.W, left, left), y: y0 + row*rowStep};
+}
 function fanX(n, i, cw, W, left, right){
   const avail = W - left - right;
   const step = n>1 ? Math.min(cw+12, (avail-cw)/(n-1)) : 0;
@@ -358,11 +452,13 @@ function render(i, anim){
   const want = new Map();
   // 手牌
   const hand = f.h.slice().sort((a,b)=>a[0]-b[0]);
-  hand.forEach((h,idx)=>want.set("c"+h[0], {t:"star", c:h[1], o:h[2], x:fanX(hand.length, idx, G.cw, G.W, 150, 150), y:G.handY, s:1, z:10+idx, grp:"hand"}));
+  hand.forEach((h,idx)=>{ const q = rowPos(hand.length, idx, G.cw, G.perRowH, G.margin, G.rowStepH, G.handY);
+    want.set("c"+h[0], {t:"star", c:h[1], o:h[2], x:q.x, y:q.y, s:1, z:10+idx, grp:"hand"}); });
   // 法则
   const laws = f.l.slice().sort((a,b)=>a[0]-b[0]);
   const lw = G.cw*G.lawS;
-  laws.forEach((l,idx)=>want.set("c"+l[0], {t:"law", lid:l[1], cost:l[2], x:fanX(laws.length, idx, lw, G.W, 150, 150)-(G.cw-lw)/2, y:G.lawY, s:G.lawS, z:5+idx, grp:"law"}));
+  laws.forEach((l,idx)=>{ const q = rowPos(laws.length, idx, lw, G.perRowL, G.margin, G.rowStepL, G.lawY);
+    want.set("c"+l[0], {t:"law", lid:l[1], cost:l[2], x:q.x-(G.cw-lw)/2, y:q.y-(G.ch-G.ch*G.lawS)/2*0, s:G.lawS, z:5+idx, grp:"law"}); });
   // 星轨
   f.k.forEach((q,idx)=>want.set("c"+q[0], {t:"star", c:q[1], o:q[2], x:G.slotX(idx+1), y:G.slotY, s:1, z:30+idx, grp:"track"}));
 
@@ -531,7 +627,8 @@ function decorateTide(f, anim){
   const tok = ++tideTok;
   if(!s){
     t.className = "idle";
-    t.innerHTML = `<div class="tt">星潮奔涌</div><div class="brk" style="margin-top:8px">放满 3 张星象后发动<br>次数 = 3 + 星阶加成（同阶 +6 / 连号 +3）+ 种类加成（同类 +6 / 三种各一 +3）</div>`;
+    t.innerHTML = G.mobile ? `<div class="tt">星潮奔涌</div><div class="brk" style="margin-top:6px">放满 3 张星象后发动<br>次数 = 3 + 星阶加成 + 种类加成</div>`
+      : `<div class="tt">星潮奔涌</div><div class="brk" style="margin-top:8px">放满 3 张星象后发动<br>次数 = 3 + 星阶加成（同阶 +6 / 连号 +3）+ 种类加成（同类 +6 / 三种各一 +3）</div>`;
     return;
   }
   const i = s.tide, live = f.ev==="tide";
@@ -659,7 +756,7 @@ let _chain = Promise.resolve();
 function enqueue(fn){ const p = _chain.then(fn); _chain = p.catch(()=>{}); return p; }
 const E = TuluEngine;
 function initPips(){
-  $("#pips").innerHTML = Array.from({length:6},(_,i)=>`<div class="pip"><div class="n">第 ${i+1} 回合</div><div class="v"></div><div class="p"></div></div>`).join("");
+  $("#pips").innerHTML = Array.from({length:6},(_,i)=>`<div class="pip"><div class="n"><span class="m0">第 </span>${i+1}<span class="m0"> 回合</span></div><div class="v"></div><div class="p"></div></div>`).join("");
 }
 function markPlayable(){
   const ok = MODE==="play" && PS && !PS.busy && !PS.done && cur===F.length-1;
@@ -678,8 +775,35 @@ function showPickOverlay(f){
   ov.style.setProperty("--pw", Math.max(70, Math.min(150, (G.W-70)/3))+"px");
   ov.style.display = "flex";
 }
+function updatePlayBar(f){
+  const bar = $("#playStatus"); if(!bar) return;
+  let t = "选一个种子，点「开始」", can = false;
+  if(PS && f){
+    const last = cur===F.length-1;
+    if(PS.done && last) t = "本局结束，见下方对比";
+    else if(PS.busy) t = "结算中…";
+    else if(!last) t = "正在回看，点日志最后一条回到当前";
+    else if(f.o && f.o.length) t = "昭示：点一张法则";
+    else { t = "轮到你：点手牌放入星轨，点法则打出"; can = true; }
+  }
+  bar.textContent = t; $("#bHint2").disabled = !can;
+}
+function showHintOverlay(){
+  const ov = $("#hintov");
+  const on = G.mobile && MODE==="play" && PS && !PS.done && PS.hint && PS.hint.len===F.length && cur===F.length-1;
+  if(!on){ ov.style.display = "none"; ov.innerHTML = ""; return; }
+  const cs = PS.hint.cands, vs = cs.map(c=>c[1]), mn = Math.min(...vs), mx = Math.max(...vs), best = Math.max(...vs);
+  const order = cs.map((c,i)=>i).sort((a,b)=>cs[b][1]-cs[a][1]);
+  ov.innerHTML = `<div class="hh"><span>${PS.hint.title}</span><button class="btn" data-closehint>关闭</button></div>` + order.map(i=>{
+    const c = cs[i], w = mx===mn ? 100 : 18 + (c[1]-mn)/(mx-mn)*82;
+    return `<div class="cand ${c[2]?"sel":""}"><div class="fill" style="width:${w}%"></div><div class="row"><span>${c[0]}</span><b>${c[1].toFixed(1)}${c[2]?"":` <span class="sub">(${(c[1]-best).toFixed(1)})</span>`}</b></div></div>`; }).join("")
+    + `<div class="note">数值 = 选这个动作后按程序打完整局的平均总倍率（不含 +80）。</div>`;
+  ov.style.display = "flex";
+}
 function playPanel(f){
   showPickOverlay(f);
+  updatePlayBar(f);
+  showHintOverlay();
   const box = $("#decision");
   if(!PS){
     box.innerHTML = `<div class="lab"><span>上手模式</span></div><div class="ti">选一个种子，点「开始」</div><div class="note">同一个种子是同一个开局（相同的初始手牌和法则）。你来出牌，结束后会和专家 / 方法 A / PPO 在<b>同一个开局</b>上的结果比对。</div>`;
@@ -693,11 +817,12 @@ function playPanel(f){
   else if(f.o && f.o.length){
     h += `<div class="ti">昭示：选一张法则（本回合消耗 0）</div>` + f.o.map((lid,j)=>`<button class="btn optbtn" data-pick="${j}"><b>${LAW[lid]}</b><span class="sub">${LAWD[lid]}</span></button>`).join("");
   } else {
-    h += `<div class="ti">轮到你了</div><div class="note">点<b>手牌</b>把星象放入星轨（第 1/2/3 位分别触发 ×1/×2/×3）；点<b>法则牌</b>打出它（铭文需 ≥ 费用）。法则可在放第 3 张前任意时刻打出；放满 3 张后自动结算星潮并进入下一回合。带青色描边的牌可以点击。</div>`;
+    const seenL = new Set(), ln = f.l.filter(l=>!seenL.has(l[1]) && seenL.add(l[1])).map(l=>`<b>${LAW[l[1]]}</b>：${LAWD[l[1]]}`);
+    h += `<div class="ti">轮到你了</div><div class="note">点<b>手牌</b>把星象放入星轨（第 1/2/3 位分别触发 ×1/×2/×3）；点<b>法则牌</b>打出它（铭文需 ≥ 费用）。法则可在放第 3 张前任意时刻打出；放满 3 张后自动结算星潮并进入下一回合。带青色描边的牌可以点击。</div>` + (ln.length ? `<div class="lawnote">手上的法则：<br>${ln.join("<br>")}</div>` : "");
   }
   if(!PS.done){
     h += `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bHint" ${PS.busy||!last?"disabled":""}>💡 专家建议（不执行）</button></div>`;
-    if(PS.hint && PS.hint.len===F.length){
+    if(PS.hint && PS.hint.len===F.length && !G.mobile){
       const cs = PS.hint.cands, vs = cs.map(c=>c[1]), mn = Math.min(...vs), mx = Math.max(...vs);
       const order = cs.map((c,i)=>i).sort((a,b)=>cs[b][1]-cs[a][1]), best = Math.max(...vs);
       h += `<div class="lab" style="margin-top:10px"><span>${PS.hint.title}</span></div>` + order.map(i=>{
@@ -768,10 +893,10 @@ function onFinish(sum){
   PS.my = sum.total;
   const sid = PS.sid, box = $("#cmp");
   box.style.display = "block";
-  const row = p => `<tr data-p="${p}"><td><b>${PNAME[p]}</b></td><td colspan="6" class="wait">等待计算（同种子单局 + 同开局重复 ${PN[p]} 局）…</td></tr>`;
+  const row = p => `<tr data-p="${p}"><td class="nm"><b>${PNAME[p]}</b></td><td colspan="6" class="wait">等待计算（同种子单局 + 同开局重复 ${PN[p]} 局）…</td></tr>`;
   box.innerHTML = `<div class="lab"><span>与程序解对比 · 种子 ${PS.seed}</span><span class="sub">单局运气成分很大（标准差约 100），所以同时给出程序在<b>同一开局</b>上重复多局的分布（专家的重复局为快速版：每个候选模拟 60 局）</span></div>
     <div class="wrap"><table><thead><tr><th>方案</th><th>本局得分（含 +${META.nuke}）</th><th>各回合倍率（绿＝你比程序高）</th><th>你 − 程序（同种子单局）</th><th>同开局重复 N 局：均值 · 5%~95%</th><th>你的位置</th><th>分布（金线＝你）</th><th></th></tr></thead><tbody>
-    <tr class="me"><td><b>你</b></td><td><b>${f1(sum.total+META.nuke)}</b>${realTxt(sum.total)}</td><td>${turnsHTML(sum.turnR)}</td><td colspan="4" class="sub">打出 ${sum.laws} 张法则 · 剩余铭文 ${sum.Ileft}</td><td><button class="btn" data-replay="you">回放我的</button></td></tr>
+    <tr class="me"><td class="nm"><b>你</b></td><td data-label="本局得分"><b>${f1(sum.total+META.nuke)}</b>${realTxt(sum.total)}</td><td data-label="各回合倍率">${turnsHTML(sum.turnR)}</td><td colspan="4" class="sub" data-label="其他">打出 ${sum.laws} 张法则 · 剩余铭文 ${sum.Ileft}</td><td class="act"><button class="btn" data-replay="you">回放我的</button></td></tr>
     ${["expert","param","ppo"].map(row).join("")}</tbody></table></div>
     <div class="verdict" id="verdict"></div>`;
   box.querySelectorAll("[data-replay]").forEach(b=>b.onclick = ()=>replayEp(b.dataset.replay));
@@ -781,7 +906,7 @@ function onFinish(sum){
     enqueue(()=>{ if(!PS || PS.sid!==sid) return null; prog(); return E.runAsync(E.compareG(PS.seed, p, PN[p], sum.total, {RSingle:100, RDist:60}), prog); }).then(r=>{
       if(!r || !PS || PS.sid!==sid) return; PS.eps[p] = r.ep; PS["d_"+p] = r; fillRow(p, r); verdict();
     }).catch(e=>{
-      const tr = box.querySelector(`tr[data-p="${p}"]`); if(tr) tr.innerHTML = `<td><b>${PNAME[p]}</b></td><td colspan="7" class="bad">${e.message}</td>`;
+      const tr = box.querySelector(`tr[data-p="${p}"]`); if(tr) tr.innerHTML = `<td class="nm"><b>${PNAME[p]}</b></td><td colspan="7" class="bad">${e.message}</td>`;
     });
   }
 }
@@ -794,14 +919,14 @@ function drawHist(cv, r, my){
 function fillRow(p, r){
   const tr = $("#cmp").querySelector(`tr[data-p="${p}"]`); if(!tr) return;
   const my = PS.my, ep = r.ep, gap = my - ep.total, N = META.nuke;
-  tr.innerHTML = `<td><b>${PNAME[p]}</b></td>
-    <td>${f1(ep.total+N)}${realTxt(ep.total)}</td>
-    <td>${turnsHTML(ep.turnR, EP.turnR)}</td>
-    <td class="${gap>=0?"good":"bad"}">${gap>=0?"+":""}${f1(gap)}</td>
-    <td>${f1(r.mean+N)} <span class="sub">(${r.n} 局)</span><div class="sub">${f1(r.p05+N)} ~ ${f1(r.p95+N)}</div></td>
-    <td>${r.pct.toFixed(0)}%<div class="sub">${my>=r.mean?"高于":"低于"}均值 ${f1(Math.abs(my-r.mean))}</div></td>
-    <td><canvas width="180" height="40"></canvas></td>
-    <td><button class="btn" data-replay="${p}">回放程序的</button></td>`;
+  tr.innerHTML = `<td class="nm"><b>${PNAME[p]}</b></td>
+    <td data-label="本局得分（同种子）">${f1(ep.total+N)}${realTxt(ep.total)}</td>
+    <td data-label="各回合倍率">${turnsHTML(ep.turnR, EP.turnR)}</td>
+    <td data-label="你 − 程序" class="${gap>=0?"good":"bad"}">${gap>=0?"+":""}${f1(gap)}</td>
+    <td data-label="同开局重复">${f1(r.mean+N)} <span class="sub">(${r.n} 局)</span><div class="sub">${f1(r.p05+N)} ~ ${f1(r.p95+N)}</div></td>
+    <td data-label="你的位置">${r.pct.toFixed(0)}%<div class="sub">${my>=r.mean?"高于":"低于"}均值 ${f1(Math.abs(my-r.mean))}</div></td>
+    <td data-label="分布（金线＝你）"><canvas width="180" height="40"></canvas></td>
+    <td class="act"><button class="btn" data-replay="${p}">回放程序的</button></td>`;
   drawHist(tr.querySelector("canvas"), r, my);
   tr.querySelector("[data-replay]").onclick = ()=>replayEp(p);
 }
@@ -900,6 +1025,8 @@ function init(){
   $("#mReplay").onclick = ()=>{ if(MODE!=="replay") setMode("replay"); };
   $("#mPlay").onclick = ()=>{ if(MODE!=="play") setMode("play"); };
   $("#bStart").onclick = startPlay;
+  $("#bHint2").onclick = hint;
+  $("#hintov").addEventListener("click", ev=>{ if(ev.target.closest("[data-closehint]")){ PS.hint = null; refreshPlay(); } });
   $("#bGen").onclick = genReplay;
   $("#repSeed").onkeydown = e=>{ if(e.key==="Enter") genReplay(); };
   $("#seedIn").onkeydown = e=>{ if(e.key==="Enter") startPlay(); };
