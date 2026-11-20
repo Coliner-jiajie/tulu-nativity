@@ -16,3 +16,4 @@ results/param/*/
 # macOS
 .DS_Store
 **/.DS_Store
+!archive/failed_dqn/*.pt
