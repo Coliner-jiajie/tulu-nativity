@@ -114,6 +114,8 @@ python scripts/c_compare.py --theta results/param/final/theta.json --ckpt result
 - 向量化环境在并行模式下各线程的随机数状态独立，不能逐步复现；需要复现时用 `VecEnv(..., parallel=False)`。
 - 目前没有在缩小实例上做精确动态规划来验证最优性，列为后续工作。
 
+> **在线试玩**：https://coliner-jiajie.github.io/tulu-nativity/ （GitHub Pages，部署的是 `viz/` 目录；仓库设置里 Pages 的 Source 选「GitHub Actions」）
+
 ## 出牌回放可视化（viz/，纯静态网页）
 
 把训练得到的策略（滚动前瞻专家 / 方法 A 参数化最优 / 方法 B PPO）做成可交互的卡牌动画，并可以**亲自上手**出牌、结束后与程序解对比。
