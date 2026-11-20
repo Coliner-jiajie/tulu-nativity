@@ -24,11 +24,13 @@ def main():
                    "C": round(p["C"], 4), "Mming": round(p["Mming"], 4), "kuangqi": p["kuangqi"],
                    "lingsu": p["lingsu"], "beizhao": p["beizhao"], "zhanwu": p["zhanwu"], "chengfu": p["chengfu"],
                    "mingLayers": p["ming_layers"],
-                   "atkAfterBonus": _load(str(DISPLAY_PATH)).get("atk_after_bonus"), "level": 90}   # 90 级神图（用户设定）
+                   "atkAfterBonus": round(d["atk_panel"], 3), "level": d["level"]}   # 面板攻击（已含灵塑 +30%，不含造物），由 panel 的等级/基础值/每级增长推导
     # 当前面板（页面顶部展示）：造物数、训练口径的 ATK/ρ/h，供核对
     out["panel"] = {"gold": pan["gold"], "silver": pan["silver"], "silverEq": d["n_eq"], "silverAtk": pan["silver_atk"],
                     "silverDef": pan["silver_def"], "trainAtk": round(d["ATK"], 2), "rho": round(d["rho"], 4),
-                    "h": round(d["h"], 3), "tideLost": pan["tide_layers_lost"]}
+                    "h": round(d["h"], 3), "tideLost": pan["tide_layers_lost"],
+                    "baseLevel": pan["base_level"], "baseAtk": pan["base"]["atk"], "growthAtk": round(pan["growth_per_level"]["atk"], 6),
+                    "statBonus": pan["stat_bonus"]}
     txt = "window.TULU_PARAMS = " + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";\n"
     try:
         import torch

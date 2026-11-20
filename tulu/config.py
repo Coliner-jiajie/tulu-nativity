@@ -11,18 +11,28 @@ CONFIG_DIR = ROOT / "configs"
 RESULTS_DIR = ROOT / "results"
 
 
-def derive_from_panel(p):
-    """由面板推导 ATK、DEF、H、ρ、h。造物加成为加法叠加；黄金造物属于「其他造物」，每个视为 2 个白银。"""
+def panel_stats(p, level=None):
+    """某等级的面板（已含诞临阶段灵塑 +stat_bonus，不含造物）：每项 = (基础值 + (等级 − 基础等级) × 每级增长) × (1 + stat_bonus)。
+    基础值是官方图（60 级）数值；level 缺省取 panel["level"]。"""
+    lv = p["level"] if level is None else level
+    boost = 1.0 + p["stat_bonus"]
+    return {k: (p["base"][k] + (lv - p["base_level"]) * p["growth_per_level"][k]) * boost for k in ("atk", "def", "con")}
+
+
+def derive_from_panel(p, level=None):
+    """由面板推导 ATK、DEF、H、ρ、h。造物加成为加法叠加；黄金造物属于「其他造物」，每个视为 2 个白银。
+    面板随等级线性增长（见 panel_stats）；level 缺省取 panel["level"]，可传入其他等级查看不同等级的数值。"""
     n_eq = p["silver"] + p["other_counts_as_silver"] * p["gold"]
     boost = 1.0 + p["stat_bonus"]
-    # 初始攻击（已含 +30%）若直接给出，则攻击、防御、体质按同样幅度缩放（用户设定：防御与生命随攻击同幅增长）
-    scale = p["atk_after_bonus"] / (p["atk"] * boost) if "atk_after_bonus" in p else 1.0
-    atk = p["atk"] * boost * scale * (1 + p["silver_atk"] * n_eq)
-    de = p["def"] * boost * scale * (1 + p["silver_def"] * n_eq)
-    hp_base = p["con"] * boost * scale * p["hp_per_100_con"] / 100.0
+    st = panel_stats(p, level)
+    lv = p["level"] if level is None else level
+    atk = st["atk"] * (1 + p["silver_atk"] * n_eq)
+    de = st["def"] * (1 + p["silver_def"] * n_eq)
+    hp_base = st["con"] * p["hp_per_100_con"] / 100.0
     hp = hp_base * (1 + p["tide_hp_bonus"] * p["tide_layers_lost"])
-    return {"n_eq": n_eq, "scale": scale, "ATK": atk, "DEF": de, "HP_base": hp_base, "H": hp,
-            "rho": de / atk, "h": hp / atk}
+    return {"level": lv, "n_eq": n_eq, "scale": st["atk"] / (p["base"]["atk"] * boost),
+            "atk_panel": st["atk"], "def_panel": st["def"], "con_panel": st["con"],
+            "ATK": atk, "DEF": de, "HP_base": hp_base, "H": hp, "rho": de / atk, "h": hp / atk}
 
 
 def load_params(path=None):
@@ -30,10 +40,11 @@ def load_params(path=None):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def load_cfg(path=None, **override):
-    """返回环境配置向量。override 的键同 tulu.env.core.make_cfg（如 rho、h、I0、after、cap）。"""
+def load_cfg(path=None, level=None, **override):
+    """返回环境配置向量。override 的键同 tulu.env.core.make_cfg（如 rho、h、I0、after、cap）。
+    level：覆盖面板等级（目前攻防体质同幅增长，ρ、h 与等级无关）。"""
     params = load_params(path)
-    d = derive_from_panel(params["panel"])
+    d = derive_from_panel(params["panel"], level)
     kw = dict(params["rules"])
     kw["rho"] = d["rho"]
     kw["h"] = d["h"]

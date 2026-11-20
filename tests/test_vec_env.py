@@ -9,13 +9,29 @@ from tulu.common.names import parse_card, parse_law, action_names
 
 
 def test_config_derivation():
-    d = derive_from_panel(load_params()["panel"])
-    assert abs(d["ATK"] - 337 * 4.6) < 1e-9          # 初始攻击 337（已含 +30%）× 造物
+    pan = load_params()["panel"]
+    d = derive_from_panel(pan)
+    assert d["level"] == 90
+    assert abs(d["atk_panel"] - 337) < 1e-9           # (194 + 30 × 每级增长) × 1.3 = 337（90 级 + 灵塑）
+    assert abs(d["ATK"] - 337 * 4.6) < 1e-9           # × 造物
     assert abs(d["scale"] - 337 / (194 * 1.3)) < 1e-12
     assert abs(d["rho"] - 0.20816) < 1e-4
     assert abs(d["h"] - 3.137) < 5e-3
     cfg = load_cfg()
     assert abs(cfg[C_RHO] - d["rho"]) < 1e-12 and abs(cfg[C_H] - d["h"]) < 1e-12
+
+
+def test_panel_level():
+    pan = load_params()["panel"]
+    d60 = derive_from_panel(pan, 60)
+    assert abs(d60["atk_panel"] - 194 * 1.3) < 1e-9 and abs(d60["ATK"] - 194 * 1.3 * 4.6) < 1e-9   # 60 级 = 官方基础值 × 灵塑
+    d75 = derive_from_panel(pan, 75)
+    assert abs(d75["atk_panel"] - (194 + 15 * pan["growth_per_level"]["atk"]) * 1.3) < 1e-9
+    assert d60["ATK"] < d75["ATK"] < derive_from_panel(pan)["ATK"]                                 # 线性增长
+    d90 = derive_from_panel(pan)
+    for lv in (60, 75, 90):                                                                          # 当前假设：攻防体质同幅增长 → ρ、h 与等级无关
+        dl = derive_from_panel(pan, lv)
+        assert abs(dl["rho"] - d90["rho"]) < 1e-12 and abs(dl["h"] - d90["h"]) < 1e-12
 
 
 def test_random_masked_play_is_consistent():
