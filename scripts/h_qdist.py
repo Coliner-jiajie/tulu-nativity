@@ -68,7 +68,7 @@ def cmd_trainq(a):
     net = DuelingQNet(hidden=a.hidden, layers=a.layers).to(dev)
     t0 = time.time()
     train_q_offline(net, data, dev, epochs=a.epochs, batch=a.batch, lr=a.lr, w_adv=a.w_adv, w_margin=a.w_margin,
-                    log=lambda s: print(s, flush=True))
+                    w_ce=a.w_ce, ce_beta=a.ce_beta, log=lambda s: print(s, flush=True))
     _save(QD / a.out / "last.pt", net, cfg)
     print(f"离线训练完成 {time.time() - t0:.0f}s -> {QD / a.out / 'last.pt'}", flush=True)
     _eval(net, cfg, nuke, a.eval_games, dev, "离线 Q")
@@ -122,6 +122,8 @@ def main():
     t.add_argument("--lr", type=float, default=1e-3)
     t.add_argument("--w-adv", type=float, default=5.0)
     t.add_argument("--w-margin", type=float, default=1.0)
+    t.add_argument("--w-ce", type=float, default=0.0, help="监督项权重：把 Q 当 logits 匹配专家动作")
+    t.add_argument("--ce-beta", type=float, default=50.0)
     t.add_argument("--eval-games", type=int, default=20000)
     d = sub.add_parser("dqn")
     d.add_argument("--init", required=True)

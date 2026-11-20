@@ -22,7 +22,7 @@ Q_SCALE = 100.0
 
 def train_q_offline(net, data, device, epochs=40, batch=2048, lr=1e-3, lr_final_frac=0.05, w_main=1.0,
                     w_adv=5.0, w_margin=1.0, w_v=0.5, margin_dec=0.05, margin_fol=0.02, val_frac=0.05,
-                    seed=0, log=print):
+                    seed=0, log=print, w_ce=0.0, ce_beta=50.0):
     rng = np.random.default_rng(seed)
     n = len(data["act"])
     idx = rng.permutation(n)
@@ -54,6 +54,8 @@ def train_q_offline(net, data, device, epochs=40, batch=2048, lr=1e-3, lr_final_
         marg = (viol * nonc).sum() / nonc.sum().clamp(min=1)
         vl = F.huber_loss(v, tmax, delta=0.5)
         total = w_main * main + w_adv * adv + w_margin * marg + w_v * vl
+        if w_ce > 0:      # 监督项：把 Q 当作 logits（×beta）去匹配专家动作，保证贪心动作与专家一致
+            total = total + w_ce * F.cross_entropy(q * ce_beta, a)
         return total, main, adv, marg, vl, q, has, astar
 
     opt = torch.optim.Adam(net.parameters(), lr=lr)
