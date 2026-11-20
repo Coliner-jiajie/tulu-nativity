@@ -205,6 +205,17 @@ body.play #playbar{display:flex;position:sticky;bottom:10px;z-index:90;margin-to
 .lawnote{font-size:12px;color:var(--mut);margin-top:8px;line-height:1.6}
 .lawnote b{color:var(--tx)}
 .m0{}
+#lawinfo{position:absolute;left:8px;right:8px;z-index:117;display:none;padding:12px 14px;border-radius:14px;border:1px solid var(--gold);background:rgba(12,17,38,.97);box-shadow:0 0 30px rgba(242,193,78,.25)}
+#lawinfo .li-h{display:flex;align-items:center;gap:12px}
+#lawinfo .li-g{font-size:34px;line-height:1;font-family:"Songti SC","Noto Serif SC",serif;font-weight:900;color:var(--gold)}
+#lawinfo .li-h b{font-size:17px;letter-spacing:.12em}
+#lawinfo .li-c{margin-left:8px;font-size:12px;padding:1px 9px;border-radius:10px;background:rgba(59,130,246,.25);color:#93c5fd}
+#lawinfo .li-c.free{background:rgba(34,197,94,.22);color:#86efac}
+#lawinfo .li-d{margin:8px 0 10px;font-size:14px;line-height:1.6;color:#d6dcf0}
+#lawinfo .li-n{font-size:12.5px;color:var(--mut);margin-bottom:8px}
+#lawinfo .li-b{display:flex;gap:10px;justify-content:flex-end}
+#lawinfo .li-b .btn.go{background:#2a2250;border-color:var(--gold);color:var(--gold);font-weight:700;padding:7px 22px}
+.card.sel .face{box-shadow:0 0 0 3px var(--gold),0 0 22px rgba(242,193,78,.85)!important}
 @media (max-width:640px){
   body{font-size:13.5px}
   header{padding:8px 12px;gap:6px 8px}
@@ -254,6 +265,11 @@ body.play #playbar{display:flex;position:sticky;bottom:10px;z-index:90;margin-to
   #over .n{font-size:40px}
   #cmp{padding:8px}
   #cmp .verdict{font-size:13px}
+  #lawinfo{padding:8px 12px}
+  #lawinfo .li-d{font-size:13px;margin:4px 0 8px;line-height:1.5}
+  #lawinfo .li-g{font-size:26px}
+  #lawinfo .li-h b{font-size:15px}
+  #lawinfo .li-b .btn.go{padding:5px 20px}
   #cmp table{min-width:0}
   #cmp thead{display:none}
   #cmp table,#cmp tbody,#cmp tr,#cmp td{display:block;width:100%}
@@ -310,6 +326,7 @@ body.play #playbar{display:flex;position:sticky;bottom:10px;z-index:90;margin-to
       <div id="over"><div class="box"></div></div>
       <div id="pickov"></div>
       <div id="hintov"></div>
+      <div id="lawinfo"></div>
     </div>
 
     <div id="playbar" class="pl"><span id="playStatus"></span><button class="btn" id="bHint2">💡 专家建议</button></div>
@@ -349,6 +366,7 @@ const ROMAN = ["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ"];
 const LAW = ["易象","增辉","敛芒","昭示","引辰","拓途","重衍"];
 const LAWG = ["易","增","敛","昭","引","拓","重"];
 const LAWD = ["手中星象各自随机变为另两种之一","手中星象星阶 +1","手中星象星阶 −1","发现 3 张法则，选 1 张，消耗 0","抽 2 张星象","随机获得 3 张法则","清空星轨与手牌，重抽 4 星象，得 2 法则"];
+const LAWD2 = ["手中每张星象独立随机变成另两种之一（星阶不变），只影响本回合。","手中所有星象的星阶 +1（上限 5），只影响本回合。","手中所有星象的星阶 −1（下限 1），只影响本回合。","发现 3 张法则（从 7 种中随机），选 1 张入手，该法则本回合消耗变为 0。","抽 2 张星象。","随机获得 3 张不同的法则。","清空星轨与手牌（已放入星轨的卡效已结算），重抽 4 张星象，并随机获得 2 张法则。"];
 const SN = c => KN[Math.floor(c/5)] + (c%5+1);
 const FEFF = [META.fZ, META.fH, META.fY];
 const $ = s => document.querySelector(s);
@@ -554,6 +572,7 @@ function tideState(i){
 function patHTML(cs){ return cs.map(c=>`<span class="${KC[Math.floor(c/5)]}">${SN(c)}</span>`).join(" "); }
 
 function decorate(f, anim, prev){
+  hideLawInfo();
   // 牌堆
   $("#pDraw b").textContent = f.dp.reduce((a,b)=>a+b,0);
   $("#pDraw .chips").innerHTML = chipsHTML(f.dp);
@@ -775,6 +794,25 @@ function showPickOverlay(f){
   ov.style.setProperty("--pw", Math.max(70, Math.min(150, (G.W-70)/3))+"px");
   ov.style.display = "flex";
 }
+function hideLawInfo(){
+  const ov = $("#lawinfo"); if(ov){ ov.style.display = "none"; ov.innerHTML = ""; }
+  for(const [k,e] of els) e.classList.remove("sel");
+}
+function showLawInfo(l){
+  const [id, lid, cost] = l, ov = $("#lawinfo");
+  for(const [k,e] of els) e.classList.toggle("sel", k==="c"+id);
+  const isLast = cur===F.length-1;
+  const live = MODE==="play" && PS && !PS.busy && !PS.done && isLast;
+  const can = live && PS.legal.law.includes(id);
+  let note = "";
+  if(live && !can) note = (F[cur].o && F[cur].o.length) ? "请先完成昭示的选择。" : `铭文不足（还剩 ${F[cur].I} 层，需要 ${cost}）。`;
+  else if(MODE==="play" && !live) note = PS && PS.busy ? "结算中…" : "";
+  ov.innerHTML = `<div class="li-h"><span class="li-g">${LAWG[lid]}</span><div><b>${LAW[lid]}</b><span class="li-c ${cost?"":"free"}">消耗 ${cost}</span></div></div>
+    <div class="li-d">${LAWD2[lid]}</div>${note?`<div class="li-n">${note}</div>`:""}
+    <div class="li-b">${can?`<button class="btn go" data-playlaw="${id}">打出</button>`:""}<button class="btn" data-closeinfo>${can?"取消":"关闭"}</button></div>`;
+  ov.style.top = Math.max(4, G.mobile ? G.tideY - 10 : G.tideY) + "px";
+  ov.style.display = "block";
+}
 function updatePlayBar(f){
   const bar = $("#playStatus"); if(!bar) return;
   let t = "选一个种子，点「开始」", can = false;
@@ -784,7 +822,7 @@ function updatePlayBar(f){
     else if(PS.busy) t = "结算中…";
     else if(!last) t = "正在回看，点日志最后一条回到当前";
     else if(f.o && f.o.length) t = "昭示：点一张法则";
-    else { t = "轮到你：点手牌放入星轨，点法则打出"; can = true; }
+    else { t = G.mobile ? "轮到你：点手牌放入星轨；点法则牌看效果并打出" : "轮到你：点手牌放入星轨，点法则打出"; can = true; }
   }
   bar.textContent = t; $("#bHint2").disabled = !can;
 }
@@ -1031,10 +1069,21 @@ function init(){
   $("#repSeed").onkeydown = e=>{ if(e.key==="Enter") genReplay(); };
   $("#seedIn").onkeydown = e=>{ if(e.key==="Enter") startPlay(); };
   stage.addEventListener("click", ev=>{
+    if(ev.target.closest("#lawinfo")){
+      const go2 = ev.target.closest("[data-playlaw]");
+      if(go2 && MODE==="play" && PS && !PS.busy && !PS.done){ const id = +go2.dataset.playlaw; hideLawInfo(); doAct({type:"law", id}); }
+      else if(ev.target.closest("[data-closeinfo]")) hideLawInfo();
+      return;
+    }
+    if(ev.target.closest("#pickov,#hintov,#over")) return;
+    const c = ev.target.closest(".card");
+    if(!c){ hideLawInfo(); return; }
+    if(!c.dataset.key) return;
+    const id = +c.dataset.key.slice(1), f = F[cur], law = f && f.l.find(l=>l[0]===id);
+    // 手机上（以及回放模式）点法则牌先看效果；上手模式里在弹层里确认「打出」
+    if(law && (G.mobile || MODE!=="play")){ showLawInfo(law); return; }
     if(MODE!=="play" || !PS || PS.busy || PS.done || cur!==F.length-1) return;
-    const c = ev.target.closest(".card"); if(!c) return;
-    const id = +c.dataset.key.slice(1);
-    if(PS.legal.place.includes(id)) doAct({type:"place", id});
+    if(PS.legal.place.includes(id)){ hideLawInfo(); doAct({type:"place", id}); }
     else if(PS.legal.law.includes(id)) doAct({type:"law", id});
   });
   $("#pickov").addEventListener("click", ev=>{
