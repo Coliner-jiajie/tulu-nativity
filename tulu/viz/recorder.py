@@ -253,6 +253,30 @@ class Game:
                 txt += "（已放入星轨的卡效已白嫖）"
         return self.emit("law", txt, played=[lawid, lid, cost], chg=chg)
 
+    # ---- 手动操作（按卡牌 id） ----
+    def legal(self):
+        si = self.si
+        if self.done():
+            return {"place": [], "law": [], "pick": []}
+        if si[O_PN] > 0:
+            return {"place": [], "law": [], "pick": list(range(int(si[O_PN])))}
+        return {"place": [self.hand[i] for i in range(int(si[O_HN]))],
+                "law": [self.laws[i] for i in range(int(si[O_LN])) if si[O_I] >= si[O_LC + i]],
+                "pick": []}
+
+    def act(self, kind, arg):
+        """kind: place / law（arg 为卡牌 id）；pick（arg 为发现项下标）。非法操作抛 ValueError。"""
+        if self.done():
+            raise ValueError("本局已结束")
+        lg = self.legal()
+        if kind == "place" and arg in lg["place"]:
+            return self.place_idx(self.hand.index(arg))
+        if kind == "law" and arg in lg["law"]:
+            return self.law_idx(self.laws.index(arg))
+        if kind == "pick" and arg in lg["pick"]:
+            return self.pick(arg)
+        raise ValueError("当前不能这样操作")
+
     def law_by_id(self, lid, paid):
         si = self.si
         for li in range(int(si[O_LN])):
@@ -365,61 +389,66 @@ def play_param(game, theta, K=12):
     return game
 
 
-def play_expert(game, theta, K=12, R=200):
-    """滚动前瞻专家：与 tulu.rl.expert.decide 同一逻辑，记录每个候选动作的模拟平均总倍率。"""
+def expert_eval(game, theta, K, R, sb):
+    """滚动前瞻专家在当前状态的评估：返回 (标题, 单位, 候选[(标签, 数值)], 动作表, 补满方案, 最优下标)。
+    动作表项 (kind, a, l1, l2)：kind 为 'opt' / 'finish' / 'law'。当前状态必须是一个全新的决策点（无半途计划）。"""
     si, sf, cfg = game.si, game.sf, game.cfg
     plan0 = np.zeros(3, dtype=np.int64)
     out = np.zeros(2, dtype=np.int64)
+    t, hn, tn = int(si[O_T]), int(si[O_HN]), int(si[O_TN])
+    V0 = float(best_completion(si[O_HC:O_HC + 16], hn, si[O_TC:O_TC + 3], tn, sf[F_B], t, cfg, theta, plan0))
+    cands, acts = [], []
+    if si[O_PN] > 0:
+        for j in range(int(si[O_PN])):
+            v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_OPTION, j, -1, -1, 0, 0, 0))
+            cands.append((f"选取「{LAW_NAMES[int(si[O_PO + j])]}」", v))
+            acts.append(("opt", j, -1, -1))
+        return "昭示：从 3 张法则中选 1 张", "期望总倍率", cands, acts, plan0, int(np.argmax([v for _, v in cands]))
+    if V0 > -1e17:
+        v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_FINISH, 0, -1, -1, plan0[0], plan0[1], plan0[2]))
+        cands.append((_plan_label(plan0, tn), v))
+        acts.append(("finish", None, -1, -1))
+    seen = set()
+    for li in range(int(si[O_LN])):
+        lid, cost = int(si[O_LI + li]), int(si[O_LC + li])
+        if si[O_I] < cost or (lid, cost) in seen:
+            continue
+        seen.add((lid, cost))
+        law_value2(lid, cost, si, sf[F_B], t, cfg, theta, K, V0, out)
+        l1, l2 = int(out[0]), int(out[1])
+        v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_LAW, li, l1, l2, 0, 0, 0))
+        cands.append((_law_label(lid, cost, [l1, l2]), v))
+        acts.append(("law", li, l1, l2))
+        if l1 >= 0 or l2 >= 0:
+            v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_LAW, li, -1, -1, 0, 0, 0))
+            cands.append((_law_label(lid, cost, [-1, -1]) + "（不提前放牌）", v))
+            acts.append(("law", li, -1, -1))
+    ci = int(np.argmax([v for _, v in cands])) if cands else -1
+    return f"第 {t} 回合：滚动前瞻（每个候选各模拟 {R} 局）", "期望总倍率", cands, acts, plan0, ci
+
+
+def play_expert(game, theta, K=12, R=200):
+    """滚动前瞻专家：与 tulu.rl.expert.decide 同一逻辑，记录每个候选动作的模拟平均总倍率。"""
     dec = 0
     gseed = game.seed
     while not game.done() and dec < 400:
         dec += 1
         sb = gseed * 7919 + dec * 104729
-        t, hn, tn = int(si[O_T]), int(si[O_HN]), int(si[O_TN])
-        V0 = float(best_completion(si[O_HC:O_HC + 16], hn, si[O_TC:O_TC + 3], tn, sf[F_B], t, cfg, theta, plan0))
-        if si[O_PN] > 0:
-            cands = []
-            for j in range(int(si[O_PN])):
-                v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_OPTION, j, -1, -1, 0, 0, 0))
-                cands.append((f"选取「{LAW_NAMES[int(si[O_PO + j])]}」", v))
-            bj = int(np.argmax([v for _, v in cands]))
-            game.decision("昭示：从 3 张法则中选 1 张", "期望总倍率", cands, bj)
-            game.pick(bj)
+        title, unit, cands, acts, plan0, ci = expert_eval(game, theta, K, R, sb)
+        if not cands:
+            break
+        game.decision(title, unit, cands, ci)
+        kind, a, l1, l2 = acts[ci]
+        if kind == "opt":
+            game.pick(a)
+        elif kind == "finish":
+            game.finish_plan(plan0)
         else:
-            cands, acts = [], []
-            if V0 > -1e17:
-                v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_FINISH, 0, -1, -1,
-                                       plan0[0], plan0[1], plan0[2]))
-                cands.append((_plan_label(plan0, tn), v))
-                acts.append(("finish", None, -1, -1))
-            seen = set()
-            for li in range(int(si[O_LN])):
-                lid, cost = int(si[O_LI + li]), int(si[O_LC + li])
-                if si[O_I] < cost or (lid, cost) in seen:
-                    continue
-                seen.add((lid, cost))
-                law_value2(lid, cost, si, sf[F_B], t, cfg, theta, K, V0, out)
-                l1, l2 = int(out[0]), int(out[1])
-                v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_LAW, li, l1, l2, 0, 0, 0))
-                cands.append((_law_label(lid, cost, [l1, l2]), v))
-                acts.append(("law", li, l1, l2))
-                if l1 >= 0 or l2 >= 0:
-                    v = float(action_value(si, sf, theta, cfg, K, R, sb, KIND_LAW, li, -1, -1, 0, 0, 0))
-                    cands.append((_law_label(lid, cost, [-1, -1]) + "（不提前放牌）", v))
-                    acts.append(("law", li, -1, -1))
-            if not cands:
-                break
-            ci = int(np.argmax([v for _, v in cands]))
-            game.decision(f"第 {t} 回合：滚动前瞻（每个候选各模拟 {R} 局）", "期望总倍率", cands, ci)
-            kind, a, l1, l2 = acts[ci]
-            if kind == "finish":
-                game.finish_plan(plan0)
-            else:
-                if l1 >= 0:
-                    game.place_form(l1)
-                if l2 >= 0:
-                    game.place_form(l2)
-                game.law_idx(a)
+            if l1 >= 0:
+                game.place_form(l1)
+            if l2 >= 0:
+                game.place_form(l2)
+            game.law_idx(a)
         seed_rng(gseed * 1000003 + dec * 7919 + 17)
     return game
 

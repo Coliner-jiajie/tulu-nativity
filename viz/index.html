@@ -160,20 +160,57 @@ details summary{cursor:pointer;color:var(--mut);font-size:12.5px;letter-spacing:
 details .rl{font-size:12.5px;color:#c3cae0;margin-top:8px}
 details .rl li{margin:3px 0}
 details .rl b{color:var(--gold)}
+
+body.play .rep{display:none!important}
+body:not(.play) .pl{display:none!important}
+.card.playable{cursor:pointer}
+.card.playable .face{box-shadow:0 0 0 2px rgba(94,234,212,.6),0 6px 16px rgba(0,0,0,.45)}
+.card.playable:hover .face{filter:brightness(1.2);box-shadow:0 0 0 2px var(--gold),0 0 26px rgba(242,193,78,.65)}
+.numin{width:84px;background:#141b33;border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:inherit;font:inherit}
+.optbtn{display:block;width:100%;text-align:left;margin-bottom:6px;padding:8px 12px}
+.optbtn .sub{display:block}
+#decision .note b{color:var(--gold)}
+#cmp{margin-top:12px}
+#cmp .wrap{overflow-x:auto}
+#cmp table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px;min-width:820px}
+#cmp th{color:var(--mut);font-weight:500;text-align:left;padding:4px 8px;border-bottom:1px solid var(--line);font-size:12px}
+#cmp td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle;font-variant-numeric:tabular-nums}
+#cmp tr.me td{background:rgba(242,193,78,.08)}
+#cmp .tt3{display:inline-flex;gap:6px}
+#cmp .tt3 span{min-width:30px;text-align:right}
+#cmp .good{color:#5eead4}#cmp .bad{color:#f87171}
+#cmp .verdict{margin-top:10px;font-size:14px;line-height:1.7}
+#cmp canvas{display:block}
+#cmp .wait{color:var(--mut)}
+#pickov{position:absolute;inset:0;z-index:115;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(6,9,20,.72);backdrop-filter:blur(3px)}
+#pickov .t{font-size:16px;letter-spacing:.12em;text-align:center;padding:0 10px;color:var(--gold)}
+#pickov .row{display:flex;gap:18px}
+#pickov .pc{position:relative;width:var(--pw,150px);height:calc(var(--pw,150px)*1.4);font-size:calc(var(--pw,150px)*.12);cursor:pointer;transition:transform .2s}
+#pickov .pc:hover{transform:translateY(-8px) scale(1.04)}
+#pickov .pc .face{box-shadow:0 0 0 2px var(--gold),0 0 30px rgba(242,193,78,.5)}
+#pickov .pc .ds{font-size:.7em}
 </style>
 </head>
 <body>
 <header>
   <h1>诞临 · 最优出牌回放<small>神王·图鲁 · 诞临阶段 6 回合</small></h1>
-  <label class="field">策略 <select id="selPolicy"></select></label>
-  <label class="field">对局 <select id="selEp"></select></label>
-  <button class="btn" id="bBest" title="本策略得分最高的一局">最高分</button>
-  <button class="btn" id="bMed" title="本策略得分居中的一局">中位</button>
-  <button class="btn" id="bWorst" title="本策略得分最低的一局">最低分</button>
-  <button class="btn" id="bRand" title="随机一局">随机</button>
+  <button class="btn on" id="mReplay">▶ 回放模式</button>
+  <button class="btn" id="mPlay">🎮 亲自上手</button>
+  <label class="field rep">策略 <select id="selPolicy"></select></label>
+  <label class="field rep">对局 <select id="selEp"></select></label>
+  <button class="btn rep" id="bBest" title="本策略得分最高的一局">最高分</button>
+  <button class="btn rep" id="bMed" title="本策略得分居中的一局">中位</button>
+  <button class="btn rep" id="bWorst" title="本策略得分最低的一局">最低分</button>
+  <button class="btn rep" id="bRand" title="随机一局">随机</button>
+  <label class="field rep">种子 <input class="numin" id="repSeed" type="number" min="1" step="1" value="41"></label>
+  <button class="btn rep" id="bGen" title="用当前策略在这个种子上现场打一局">按种子生成</button>
+  <label class="field pl">种子 <input class="numin" id="seedIn" type="number" min="1" step="1" value="1"></label>
+  <button class="btn pl on" id="bStart">开始 / 重开此种子</button>
+  <label class="field pl">动画速度 <select id="selSpdP"><option value="1">1×</option><option value="1.5" selected>1.5×</option><option value="2">2×</option><option value="4">4×</option></select></label>
   <span class="spacer"></span>
-  <span class="sub" id="seedHint">同一个种子 = 同样的开局，切换策略可对比</span>
-  <div class="pdesc" id="pdesc"></div>
+  <span class="sub rep" id="seedHint">同一个种子 = 同样的开局，切换策略可对比</span>
+  <span class="sub pl">同一种子 = 同样的开局；重开并做同样的操作，结果完全一样</span>
+  <div class="pdesc rep" id="pdesc"></div>
 </header>
 
 <main>
@@ -190,9 +227,11 @@ details .rl b{color:var(--gold)}
       <canvas id="stars"></canvas>
       <div id="tide" class="idle"></div>
       <div id="over"><div class="box"></div></div>
+      <div id="pickov"></div>
     </div>
 
-    <div id="controls">
+    <div id="cmp" class="card-box pl" style="display:none"></div>
+    <div id="controls" class="rep">
       <button class="btn" id="bFirst" title="回到开头 (Home)">⏮</button>
       <button class="btn" id="bPrevT" title="上一回合 ([)">⏪</button>
       <button class="btn" id="bPrev" title="上一步 (←)">◀</button>
@@ -215,6 +254,8 @@ details .rl b{color:var(--gold)}
   </aside>
 </main>
 
+<script src="params.js"></script>
+<script src="engine.js"></script>
 <script src="data.js"></script>
 <script>
 "use strict";
@@ -464,7 +505,7 @@ function decorate(f, anim, prev){
       ${REAL ? `<div class="f" style="color:var(--gold)">真实伤害 ${fmtDmg(realTotal(f.R))}　= (${f.R.toFixed(1)} + ${REAL.nukeReal}) × ${REAL.scale.toFixed(0)}</div>` : ""}
       <div class="bars">${tr.map(v=>`<div style="height:${Math.max(8,v/mx*70)}px"><span>${v.toFixed(0)}</span></div>`).join("")}</div>
       <div class="sub">各回合倍率 · 共打出 ${EP.laws} 张法则 · 剩余铭文 ${EP.Ileft}</div>`;
-    setTimeout(()=>{ if(cur===F.length-1) ov.classList.add("show"); }, anim ? 900/speed : 0);
+    if(MODE!=="play") setTimeout(()=>{ if(cur===F.length-1) ov.classList.add("show"); }, anim ? 900/speed : 0);
   } else ov.classList.remove("show");
   // 说明、决策、日志、进度
   const tagTxt = {start:"回合开始",place:"出星象",law:"打法则",pick:"昭示选择",tide:"星潮奔涌",end:"回合结束",over:"结束"}[f.ev];
@@ -472,6 +513,7 @@ function decorate(f, anim, prev){
   decorateDecision(f);
   $("#scrub").value = cur; $("#pos").textContent = `${cur+1} / ${F.length}`;
   document.querySelectorAll("#log .it").forEach(e=>e.classList.toggle("cur", +e.dataset.i===cur));
+  if(MODE==="play") markPlayable();
   const ce = document.querySelector("#log .it.cur"); if(ce){ const lg=$("#log"); lg.scrollTop = ce.offsetTop - lg.clientHeight/2 + 20; }
 }
 
@@ -506,6 +548,8 @@ function decorateTide(f, anim){
 
 function decorateDecision(f){
   const box = $("#decision");
+  if(MODE==="play"){ playPanel(f); return; }
+  if(EP && EP.policy==="you"){ box.innerHTML = `<div class="ti">你的操作</div><div class="note">这是你自己打的一局，没有程序的候选评分。</div>`; return; }
   if(f.d===undefined){
     box.innerHTML = `<div class="ti">决策</div><div class="note">${f.ev==="start"?"抽牌阶段：星象与法则由系统随机发放，无需决策。":f.ev==="over"?"本局已结束。":"（无决策）"}</div>`;
     return;
@@ -538,6 +582,7 @@ function buildLog(){
 /* ---------- 播放控制 ---------- */
 function clearStage(){ for(const [k,e] of els) e.remove(); els.clear(); stage.querySelectorAll(".fx").forEach(e=>e.remove()); }
 function go(i, anim){
+  if(!F.length) return;
   i = Math.max(0, Math.min(F.length-1, i));
   if(anim === undefined) anim = (i === cur+1);
   stage.style.setProperty("--tm", (0.6/speed)+"s");
@@ -574,8 +619,9 @@ function jumpTurn(dir){
 function loadEp(ep, autoplay){
   stop(); clearStage(); EP = ep; F = ep.frames; cur = 0; shownTotal = 0;
   $("#scrub").max = F.length-1;
-  $("#pips").innerHTML = Array.from({length:6},(_,i)=>`<div class="pip"><div class="n">第 ${i+1} 回合</div><div class="v"></div><div class="p"></div></div>`).join("");
+  initPips();
   buildLog();
+  if(MODE==="replay") REPLAY_EP = ep;
   render(0, true);
   $("#selEp").value = ep.id;
   if(autoplay) play();
@@ -596,6 +642,212 @@ function pick(kind){
   $("#selEp").value = e.id; loadEp(e, false);
 }
 
+/* ================= 亲自上手模式 ================= */
+let MODE = "replay", PS = null, REPLAY_EP = null;
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+/* 重计算（专家建议、对比、按种子生成）统一排队：一次只跑一个，保证可复现，也不会抢占随机数 */
+let _chain = Promise.resolve();
+function enqueue(fn){ const p = _chain.then(fn); _chain = p.catch(()=>{}); return p; }
+const E = TuluEngine;
+function initPips(){
+  $("#pips").innerHTML = Array.from({length:6},(_,i)=>`<div class="pip"><div class="n">第 ${i+1} 回合</div><div class="v"></div><div class="p"></div></div>`).join("");
+}
+function markPlayable(){
+  const ok = MODE==="play" && PS && !PS.busy && !PS.done && cur===F.length-1;
+  for(const [key,e] of els){
+    const id = +key.slice(1);
+    e.classList.toggle("playable", !!ok && (PS.legal.place.includes(id) || PS.legal.law.includes(id)));
+  }
+}
+function refreshPlay(){ if(!F.length) return; markPlayable(); playPanel(F[cur]); }
+
+function showPickOverlay(f){
+  const ov = $("#pickov");
+  const on = MODE==="play" && PS && !PS.busy && !PS.done && f && cur===F.length-1 && f.o && f.o.length;
+  if(!on){ ov.style.display = "none"; ov.innerHTML = ""; return; }
+  ov.innerHTML = `<div class="t">昭示 · 选一张法则（本回合消耗 0）</div><div class="row">` + f.o.map((lid,j)=>`<div class="pc card law" data-pick="${j}">${lawFace(lid,0)}</div>`).join("") + `</div>`;
+  ov.style.setProperty("--pw", Math.max(70, Math.min(150, (G.W-70)/3))+"px");
+  ov.style.display = "flex";
+}
+function playPanel(f){
+  showPickOverlay(f);
+  const box = $("#decision");
+  if(!PS){
+    box.innerHTML = `<div class="lab"><span>上手模式</span></div><div class="ti">选一个种子，点「开始」</div><div class="note">同一个种子是同一个开局（相同的初始手牌和法则）。你来出牌，结束后会和专家 / 方法 A / PPO 在<b>同一个开局</b>上的结果比对。</div>`;
+    return;
+  }
+  const last = cur===F.length-1;
+  let h = `<div class="lab"><span>上手模式 · 种子 ${PS.seed}</span><span>${f.ev==="over"?"已结束":"第 "+f.t+" / 6 回合"}</span></div>`;
+  if(PS.done && last) h += `<div class="ti">本局结束</div><div class="note">下方是与程序解的对比。右侧日志可以点任意一步回看。</div>`;
+  else if(PS.busy) h += `<div class="ti">结算中…</div>`;
+  else if(!last) h += `<div class="ti">正在回看历史</div><div class="note">点击日志最后一条（或按 End）回到当前局面继续操作。</div>`;
+  else if(f.o && f.o.length){
+    h += `<div class="ti">昭示：选一张法则（本回合消耗 0）</div>` + f.o.map((lid,j)=>`<button class="btn optbtn" data-pick="${j}"><b>${LAW[lid]}</b><span class="sub">${LAWD[lid]}</span></button>`).join("");
+  } else {
+    h += `<div class="ti">轮到你了</div><div class="note">点<b>手牌</b>把星象放入星轨（第 1/2/3 位分别触发 ×1/×2/×3）；点<b>法则牌</b>打出它（铭文需 ≥ 费用）。法则可在放第 3 张前任意时刻打出；放满 3 张后自动结算星潮并进入下一回合。带青色描边的牌可以点击。</div>`;
+  }
+  if(!PS.done){
+    h += `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="bHint" ${PS.busy||!last?"disabled":""}>💡 专家建议（不执行）</button></div>`;
+    if(PS.hint && PS.hint.len===F.length){
+      const cs = PS.hint.cands, vs = cs.map(c=>c[1]), mn = Math.min(...vs), mx = Math.max(...vs);
+      const order = cs.map((c,i)=>i).sort((a,b)=>cs[b][1]-cs[a][1]), best = Math.max(...vs);
+      h += `<div class="lab" style="margin-top:10px"><span>${PS.hint.title}</span></div>` + order.map(i=>{
+        const c = cs[i], w = mx===mn ? 100 : 18 + (c[1]-mn)/(mx-mn)*82;
+        return `<div class="cand ${c[2]?"sel":""}"><div class="fill" style="width:${w}%"></div><div class="row"><span>${c[0]}</span><b>${c[1].toFixed(1)}${c[2]?"":` <span class="sub">(${(c[1]-best).toFixed(1)})</span>`}</b></div></div>`; }).join("")
+        + `<div class="note">数值 = 选这个动作后按程序打完整局的平均总倍率（不含 +80）。</div>`;
+    }
+  }
+  box.innerHTML = h;
+}
+
+async function doAct(body){
+  PS.busy = true; PS.hint = null; markPlayable(); playPanel(F[cur]);
+  let r;
+  const sid = PS.sid, start = F.length;
+  try{ r = PS.game.act(body.type, body.type==="pick" ? body.j : body.id); }
+  catch(e){ PS.busy = false; alert(e.message); refreshPlay(); return; }
+  buildLog();
+  for(let i=start;i<F.length;i++){
+    if(!PS || PS.sid!==sid || MODE!=="play") return;
+    go(i, true);
+    await sleep(dur(F[i])*0.75);
+  }
+  if(!PS || PS.sid!==sid) return;
+  PS.legal = r.legal; PS.done = r.done; PS.busy = false;
+  if(r.done) onFinish(r.summary);
+  refreshPlay();
+}
+
+async function startPlay(){
+  stop();
+  const seed = Math.max(1, parseInt($("#seedIn").value) || 1);
+  $("#seedIn").value = seed;
+  const game = E.newGame(seed), r = {sid:Math.random().toString(36).slice(2), legal:game.legal(), frames:game.frames};
+  clearStage();
+  PS = {sid:r.sid, game, seed, legal:r.legal, done:false, busy:true, hint:null, eps:{}};
+  EP = {id:"you-"+seed, policy:"you", seed, frames:r.frames, decs:[], turnR:[0,0,0,0,0,0], laws:0, Ileft:0};
+  PS.ep = EP; F = EP.frames; cur = 0; shownTotal = 0;
+  speed = +$("#selSpdP").value; stage.style.setProperty("--tm", (0.6/speed)+"s");
+  $("#cmp").style.display = "none"; $("#cmp").innerHTML = "";
+  initPips(); buildLog(); render(0, true);
+  await sleep(dur(F[0])*0.7);
+  if(PS && PS.sid===r.sid){ PS.busy = false; refreshPlay(); }
+}
+
+async function hint(){
+  if(!PS || PS.busy || PS.done) return;
+  const len = F.length, btn = $("#bHint"); if(btn){ btn.disabled = true; btn.textContent = "专家计算中…"; }
+  const sid = PS.sid;
+  try{ const r = await enqueue(()=>E.runAsync(E.hintG(PS.game, 200))); if(PS && PS.sid===sid) PS.hint = {...r, len}; }
+  catch(e){ alert(e.message); }
+  if(PS && PS.sid===sid) refreshPlay();
+}
+
+/* ---- 结束后的对比 ---- */
+const PNAME = {expert:"滚动前瞻专家", param:"方法 A · 参数化", ppo:"方法 B · PPO"};
+const PN = {expert:20, param:5000, ppo:300};
+const f1 = v => v.toFixed(1);
+const realTxt = tot => REAL ? `<div class="sub">${fmtDmg(realTotal(tot))}</div>` : "";
+function turnsHTML(tr, ref){
+  return `<span class="tt3">` + tr.map((v,i)=>{
+    const cls = ref ? (v < ref[i]-10 ? "good" : v > ref[i]+10 ? "bad" : "") : "";
+    return `<span class="${cls}" title="第 ${i+1} 回合${ref?`（程序 ${v.toFixed(1)}，你 ${ref[i].toFixed(1)}）`:""}">${v.toFixed(0)}</span>`;
+  }).join("") + `</span>`;
+}
+function onFinish(sum){
+  EP.total = sum.total; EP.turnR = sum.turnR; EP.laws = sum.laws; EP.Ileft = sum.Ileft; EP.lawcnt = sum.lawcnt;
+  PS.my = sum.total;
+  const sid = PS.sid, box = $("#cmp");
+  box.style.display = "block";
+  const row = p => `<tr data-p="${p}"><td><b>${PNAME[p]}</b></td><td colspan="6" class="wait">等待计算（同种子单局 + 同开局重复 ${PN[p]} 局）…</td></tr>`;
+  box.innerHTML = `<div class="lab"><span>与程序解对比 · 种子 ${PS.seed}</span><span class="sub">单局运气成分很大（标准差约 100），所以同时给出程序在<b>同一开局</b>上重复多局的分布（专家的重复局为快速版：每个候选模拟 60 局）</span></div>
+    <div class="wrap"><table><thead><tr><th>方案</th><th>本局得分（含 +${META.nuke}）</th><th>各回合倍率（绿＝你比程序高）</th><th>你 − 程序（同种子单局）</th><th>同开局重复 N 局：均值 · 5%~95%</th><th>你的位置</th><th>分布（金线＝你）</th><th></th></tr></thead><tbody>
+    <tr class="me"><td><b>你</b></td><td><b>${f1(sum.total+META.nuke)}</b>${realTxt(sum.total)}</td><td>${turnsHTML(sum.turnR)}</td><td colspan="4" class="sub">打出 ${sum.laws} 张法则 · 剩余铭文 ${sum.Ileft}</td><td><button class="btn" data-replay="you">回放我的</button></td></tr>
+    ${["expert","param","ppo"].map(row).join("")}</tbody></table></div>
+    <div class="verdict" id="verdict"></div>`;
+  box.querySelectorAll("[data-replay]").forEach(b=>b.onclick = ()=>replayEp(b.dataset.replay));
+  box.scrollIntoView({behavior:"smooth", block:"nearest"});
+  for(const p of ["param","ppo","expert"]){
+    const prog = v => { const tr = box.querySelector(`tr[data-p="${p}"] td.wait`); if(tr && PS && PS.sid===sid) tr.textContent = `正在计算…${typeof v==="number" ? " 同开局重复 "+v+" / "+PN[p]+" 局" : ""}`; };
+    enqueue(()=>{ if(!PS || PS.sid!==sid) return null; prog(); return E.runAsync(E.compareG(PS.seed, p, PN[p], sum.total, {RSingle:100, RDist:60}), prog); }).then(r=>{
+      if(!r || !PS || PS.sid!==sid) return; PS.eps[p] = r.ep; PS["d_"+p] = r; fillRow(p, r); verdict();
+    }).catch(e=>{
+      const tr = box.querySelector(`tr[data-p="${p}"]`); if(tr) tr.innerHTML = `<td><b>${PNAME[p]}</b></td><td colspan="7" class="bad">${e.message}</td>`;
+    });
+  }
+}
+function drawHist(cv, r, my){
+  const W = cv.width, H = cv.height, g = cv.getContext("2d"), [lo,hi,nb] = r.bins, mx = Math.max(...r.hist);
+  g.clearRect(0,0,W,H); g.fillStyle = "rgba(167,139,250,.75)";
+  r.hist.forEach((c,i)=>{ const h = c/mx*(H-4); g.fillRect(i*W/nb+.5, H-h, W/nb-1, h); });
+  const x = Math.max(1, Math.min(W-1, (my-lo)/(hi-lo)*W)); g.fillStyle = "#f2c14e"; g.fillRect(x-1, 0, 2, H);
+}
+function fillRow(p, r){
+  const tr = $("#cmp").querySelector(`tr[data-p="${p}"]`); if(!tr) return;
+  const my = PS.my, ep = r.ep, gap = my - ep.total, N = META.nuke;
+  tr.innerHTML = `<td><b>${PNAME[p]}</b></td>
+    <td>${f1(ep.total+N)}${realTxt(ep.total)}</td>
+    <td>${turnsHTML(ep.turnR, EP.turnR)}</td>
+    <td class="${gap>=0?"good":"bad"}">${gap>=0?"+":""}${f1(gap)}</td>
+    <td>${f1(r.mean+N)} <span class="sub">(${r.n} 局)</span><div class="sub">${f1(r.p05+N)} ~ ${f1(r.p95+N)}</div></td>
+    <td>${r.pct.toFixed(0)}%<div class="sub">${my>=r.mean?"高于":"低于"}均值 ${f1(Math.abs(my-r.mean))}</div></td>
+    <td><canvas width="180" height="40"></canvas></td>
+    <td><button class="btn" data-replay="${p}">回放程序的</button></td>`;
+  drawHist(tr.querySelector("canvas"), r, my);
+  tr.querySelector("[data-replay]").onclick = ()=>replayEp(p);
+}
+function verdict(){
+  const el = $("#verdict"); if(!el) return;
+  const my = PS.my, N = META.nuke, out = [];
+  const e = PS.d_expert || PS.d_param || PS.d_ppo, p = PS.d_expert ? "expert" : PS.d_param ? "param" : "ppo";
+  if(!e) return;
+  out.push(`你的得分 <b style="color:var(--gold)">${f1(my+N)}</b>${REAL?`（${fmtDmg(realTotal(my))}）`:""}。${PNAME[p]}在同一开局上的平均是 <b>${f1(e.mean+N)}</b>，你${my>=e.mean?"高出":"低了"} ${f1(Math.abs(my-e.mean))}，相当于它重复 ${e.n} 局中的第 <b>${e.pct.toFixed(0)}</b> 百分位。`);
+  const ex = PS.eps.expert || PS.eps.param;
+  if(ex){
+    const d = EP.turnR.map((v,i)=>v-ex.turnR[i]), worst = d.indexOf(Math.min(...d)), best = d.indexOf(Math.max(...d));
+    out.push(`与${PS.eps.expert?"专家":"方法 A"}在同种子下的那一局逐回合对比：你最落后的是第 ${worst+1} 回合（${f1(d[worst])}），最领先的是第 ${best+1} 回合（${d[best]>=0?"+":""}${f1(d[best])}）。点「回放程序的」可以看它每一步为什么那样打；同种子下后续的随机事件会因操作不同而不同，所以牌面不会完全一致。`);
+  }
+  el.innerHTML = out.join("<br>");
+}
+function replayEp(which){
+  const ep = which==="you" ? PS.ep : PS.eps[which];
+  if(!ep) return;
+  setMode("replay", ep);
+}
+
+async function genReplay(){
+  const p = $("#selPolicy").value, seed = Math.max(1, parseInt($("#repSeed").value) || 1);
+  $("#repSeed").value = seed;
+  let ep = D.episodes.find(e=>e.id===`${p}-${seed}`);
+  if(!ep){
+    const btn = $("#bGen"); btn.disabled = true; btn.textContent = "计算中…";
+    try{ ep = await enqueue(()=>E.runAsync(E.runPolicyG(p, seed, {R:200}))); D.episodes.push(ep); }
+    catch(e){ alert(e.message); }
+    btn.disabled = false; btn.textContent = "按种子生成";
+    if(!ep) return;
+  }
+  fillEps(p); loadEp(ep, false);
+}
+function setMode(m, ep){
+  stop(); MODE = m;
+  document.body.classList.toggle("play", m==="play");
+  $("#mReplay").classList.toggle("on", m==="replay"); $("#mPlay").classList.toggle("on", m==="play");
+  clearStage(); $("#over").classList.remove("show");
+  if(m==="play"){
+    speed = +$("#selSpdP").value; stage.style.setProperty("--tm", (0.6/speed)+"s");
+    if(PS){
+      EP = PS.ep; F = EP.frames; cur = F.length-1; shownTotal = 0;
+      initPips(); buildLog(); render(cur, false); refreshPlay();
+    } else { EP = null; F = []; cur = 0; $("#caption").innerHTML = `<span class="tag">上手模式</span>选一个种子，点「开始 / 重开此种子」`; $("#log").innerHTML = ""; playPanel(null); }
+  } else {
+    speed = +$("#selSpd").value; stage.style.setProperty("--tm", (0.6/speed)+"s");
+    $("#pickov").style.display = "none";
+    const e = ep || REPLAY_EP || D.episodes[0];
+    $("#selPolicy").value = e.policy==="you" ? $("#selPolicy").value : e.policy;
+    loadEp(e, false);
+  }
+}
+
 /* ---------- 初始化 ---------- */
 function init(){
   $("#selPolicy").innerHTML = META.policies.map(p=>`<option value="${p.key}">${p.name}（≈${p.mean}）</option>`).join("");
@@ -613,10 +865,33 @@ function init(){
   $("#bLast").onclick = ()=>{ stop(); go(F.length-1, false); };
   $("#bPrevT").onclick = ()=>jumpTurn(-1); $("#bNextT").onclick = ()=>jumpTurn(1);
   $("#selSpd").onchange = e=>{ speed = +e.target.value; stage.style.setProperty("--tm", (0.6/speed)+"s"); };
+  $("#selSpdP").onchange = e=>{ speed = +e.target.value; stage.style.setProperty("--tm", (0.6/speed)+"s"); };
+  $("#mReplay").onclick = ()=>{ if(MODE!=="replay") setMode("replay"); };
+  $("#mPlay").onclick = ()=>{ if(MODE!=="play") setMode("play"); };
+  $("#bStart").onclick = startPlay;
+  $("#bGen").onclick = genReplay;
+  $("#repSeed").onkeydown = e=>{ if(e.key==="Enter") genReplay(); };
+  $("#seedIn").onkeydown = e=>{ if(e.key==="Enter") startPlay(); };
+  stage.addEventListener("click", ev=>{
+    if(MODE!=="play" || !PS || PS.busy || PS.done || cur!==F.length-1) return;
+    const c = ev.target.closest(".card"); if(!c) return;
+    const id = +c.dataset.key.slice(1);
+    if(PS.legal.place.includes(id)) doAct({type:"place", id});
+    else if(PS.legal.law.includes(id)) doAct({type:"law", id});
+  });
+  $("#pickov").addEventListener("click", ev=>{
+    const c = ev.target.closest("[data-pick]");
+    if(c && MODE==="play" && PS && !PS.busy && !PS.done) doAct({type:"pick", j:+c.dataset.pick});
+  });
+  $("#decision").addEventListener("click", ev=>{
+    const b = ev.target.closest("button"); if(!b || b.disabled) return;
+    if(b.dataset.pick!==undefined && MODE==="play" && PS && !PS.busy && !PS.done) doAct({type:"pick", j:+b.dataset.pick});
+    else if(b.id==="bHint") hint();
+  });
   $("#scrub").oninput = e=>{ stop(); go(+e.target.value, false); };
   document.addEventListener("keydown", e=>{
     if(["INPUT","SELECT","TEXTAREA"].includes(e.target.tagName) && e.key!==" ") return;
-    if(e.key===" "){ e.preventDefault(); playing?stop():play(); }
+    if(e.key===" "){ e.preventDefault(); if(MODE!=="play") playing?stop():play(); }
     else if(e.key==="ArrowRight"){ stop(); go(cur+1, true); }
     else if(e.key==="ArrowLeft"){ stop(); go(cur-1, false); }
     else if(e.key==="Home"){ stop(); go(0,false); } else if(e.key==="End"){ stop(); go(F.length-1,false); }

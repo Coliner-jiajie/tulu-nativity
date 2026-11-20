@@ -114,15 +114,29 @@ python scripts/c_compare.py --theta results/param/final/theta.json --ckpt result
 - 向量化环境在并行模式下各线程的随机数状态独立，不能逐步复现；需要复现时用 `VecEnv(..., parallel=False)`。
 - 目前没有在缩小实例上做精确动态规划来验证最优性，列为后续工作。
 
-## 出牌回放可视化（viz/）
+## 出牌回放可视化（viz/，纯静态网页）
 
-把训练得到的策略（滚动前瞻专家 / 方法 A 参数化最优 / 方法 B PPO）打出的整局做成可交互的卡牌动画：
-抽牌飞入、星象放入星轨并结算卡效、法则施放与星象变形、星潮奔涌逐次命中、回合末弃牌与余波，右侧同步显示每一步的候选动作与评分。
+把训练得到的策略（滚动前瞻专家 / 方法 A 参数化最优 / 方法 B PPO）做成可交互的卡牌动画，并可以**亲自上手**出牌、结束后与程序解对比。
+整个页面是纯前端：规则引擎与三种策略都已移植成 JavaScript（`viz/engine.js`），**不需要任何服务器**，双击 `viz/index.html` 即可（也可以直接放到 GitHub Pages 等静态托管）。
+
+- **回放模式**：选策略与种子，逐步播放抽牌、星轨结算、法则施放、星潮奔涌；右侧显示每个决策的候选评分。「按种子生成」可对任意种子现场打一局。
+- **上手模式**：选种子（同一个种子 = 同一个开局），自己点牌出牌；「专家建议」只给参考不代打。结束后给出同种子单局对比，以及程序在同一开局上重复多局的分布与你的百分位。
+
+文件：
+
+| 文件 | 作用 |
+|---|---|
+| `viz/index.html` | 页面与动画 |
+| `viz/engine.js` | 规则引擎 + 方法 A + 滚动前瞻专家 + PPO 推理（与 `tulu/env/core.py`、`tulu/param/`、`tulu/rl/expert.py` 一一对应） |
+| `viz/params.js` | 环境配置、方法 A 的 θ、PPO 权重、真实伤害换算（由 `scripts/v_export_params.py` 生成） |
+| `viz/data.js` | 预生成的回放（种子 1~40 × 三策略，由 `scripts/v_gen_data.sh` 生成，约 1 分钟，用 macOS 自带的 jsc） |
+
+规则、配置、策略或模型变了之后，依次重跑：
 
 ```bash
-python scripts/v_export_episodes.py --games 40      # 录制回放数据 → viz/data.js（约 40 秒，随时可重跑）
-open viz/index.html                                  # 直接双击/打开即可，无需服务器、无需联网
+python scripts/v_export_params.py      # 更新 viz/params.js
+./scripts/v_gen_data.sh                # 更新 viz/data.js
 ```
 
-录制逻辑在 `tulu/viz/recorder.py`（逐步复现各策略的决策并记录候选评分），前端是单文件 `viz/index.html`（原生 JS，无依赖）。
-同一个种子在三种策略下是同一个开局，可以切换策略对比。
+JS 引擎与 Python 版的统计一致（2 万局：随机 691.1 vs 691.0；方法 A 1231.0±0.7 vs 1229.96；PPO 1196.5 vs 1196.0）。随机数不同，所以同一个种子在 Python 与 JS 里的开局不同。
+`scripts/v_export_episodes.py` 与 `tulu/viz/recorder.py` 是早期的 Python 录制版本，仅作参考，不再被页面使用。
