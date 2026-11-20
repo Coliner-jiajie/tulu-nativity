@@ -10,7 +10,8 @@ from tulu.common.names import parse_card, parse_law, action_names
 
 def test_config_derivation():
     d = derive_from_panel(load_params()["panel"])
-    assert abs(d["ATK"] - 194 * 1.3 * 4.6) < 1e-9
+    assert abs(d["ATK"] - 337 * 4.6) < 1e-9          # 初始攻击 337（已含 +30%）× 造物
+    assert abs(d["scale"] - 337 / (194 * 1.3)) < 1e-12
     assert abs(d["rho"] - 0.20816) < 1e-4
     assert abs(d["h"] - 3.137) < 5e-3
     cfg = load_cfg()

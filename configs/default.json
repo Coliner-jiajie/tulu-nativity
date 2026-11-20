@@ -1,5 +1,5 @@
 {
-  "_comment": "60 级面板 + 12 个黄金造物 + 潮蚀失去 6 层。rho、h 由 panel 推导（见 tulu/config.py）。所有规则假设见 docs/model_spec.md。",
+  "_comment": "面板：初始攻击（已含体质/攻防 +30%）= 337；防御与生命按攻击增长的同样幅度缩放，所以 rho、h 不变。rho、h 由 panel 推导（见 tulu/config.py）。所有规则假设见 docs/model_spec.md。",
   "panel": {
     "con": 167,
     "atk": 194,
@@ -12,7 +12,8 @@
     "silver_atk": 0.15,
     "silver_def": 0.03,
     "tide_layers_lost": 6,
-    "tide_hp_bonus": 0.8
+    "tide_hp_bonus": 0.8,
+    "atk_after_bonus": 337
   },
   "rules": {
     "N": 6,

@@ -15,11 +15,13 @@ def derive_from_panel(p):
     """由面板推导 ATK、DEF、H、ρ、h。造物加成为加法叠加；黄金造物属于「其他造物」，每个视为 2 个白银。"""
     n_eq = p["silver"] + p["other_counts_as_silver"] * p["gold"]
     boost = 1.0 + p["stat_bonus"]
-    atk = p["atk"] * boost * (1 + p["silver_atk"] * n_eq)
-    de = p["def"] * boost * (1 + p["silver_def"] * n_eq)
-    hp_base = p["con"] * boost * p["hp_per_100_con"] / 100.0
+    # 初始攻击（已含 +30%）若直接给出，则攻击、防御、体质按同样幅度缩放（用户设定：防御与生命随攻击同幅增长）
+    scale = p["atk_after_bonus"] / (p["atk"] * boost) if "atk_after_bonus" in p else 1.0
+    atk = p["atk"] * boost * scale * (1 + p["silver_atk"] * n_eq)
+    de = p["def"] * boost * scale * (1 + p["silver_def"] * n_eq)
+    hp_base = p["con"] * boost * scale * p["hp_per_100_con"] / 100.0
     hp = hp_base * (1 + p["tide_hp_bonus"] * p["tide_layers_lost"])
-    return {"n_eq": n_eq, "ATK": atk, "DEF": de, "HP_base": hp_base, "H": hp,
+    return {"n_eq": n_eq, "scale": scale, "ATK": atk, "DEF": de, "HP_base": hp_base, "H": hp,
             "rho": de / atk, "h": hp / atk}
 
 

@@ -142,7 +142,12 @@ def save_checkpoint(path, net, opt, it, cfg, env_cfg, extra=None):
 
 def load_net(path, device="cpu"):
     ck = torch.load(path, map_location=device, weights_only=False)
-    net = ActorCritic(**ck["meta"]).to(device)
+    meta = dict(ck["meta"])
+    if meta.get("type") == "dueling":
+        from tulu.rl.networks import DuelingQNet
+        net = DuelingQNet(**meta).to(device)
+    else:
+        net = ActorCritic(**meta).to(device)
     net.load_state_dict(ck["model"])
     net.eval()
     return net, ck
