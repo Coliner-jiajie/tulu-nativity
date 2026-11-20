@@ -12,3 +12,7 @@ results/param/*/
 !models/
 !models/*.pt
 !models/*.json
+
+# macOS
+.DS_Store
+**/.DS_Store
