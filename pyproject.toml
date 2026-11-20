@@ -1,0 +1,16 @@
+[project]
+name = "tulu-nativity"
+version = "0.3.0"
+description = "诞临·图鲁 诞临阶段最优出牌研究：参数化策略 + CEM 与神经网络强化学习"
+requires-python = ">=3.10"
+dependencies = ["numpy", "numba"]
+
+[project.optional-dependencies]
+rl = ["torch"]
+dev = ["pytest", "matplotlib"]
+
+[tool.setuptools]
+packages = ["tulu", "tulu.env", "tulu.param", "tulu.rl", "tulu.common"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

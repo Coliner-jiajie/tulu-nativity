@@ -1,0 +1,5 @@
+numpy
+numba
+matplotlib
+pytest
+torch    # 仅方法 B（神经网络强化学习）需要

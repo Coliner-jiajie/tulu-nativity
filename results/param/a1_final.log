@@ -1,0 +1,50 @@
+面板推导: {'n_eq': 24, 'ATK': 1160.12, 'DEF': 241.488, 'HP_base': 627.419, 'H': 3639.0302, 'rho': 0.2082, 'h': 3.1368}
+  iter   0 best= 1129.87 elite-mean= 1122.30 mean-cand= 1069.17
+  iter   1 best= 1137.24 elite-mean= 1133.41 mean-cand= 1127.42
+  iter   2 best= 1141.38 elite-mean= 1139.43 mean-cand= 1136.10
+  iter   3 best= 1145.12 elite-mean= 1143.90 mean-cand= 1139.63
+  iter   4 best= 1145.18 elite-mean= 1144.55 mean-cand= 1141.33
+  iter   5 best= 1146.89 elite-mean= 1146.37 mean-cand= 1144.70
+  iter   6 best= 1151.50 elite-mean= 1151.16 mean-cand= 1149.10
+  iter   7 best= 1149.91 elite-mean= 1149.02 mean-cand= 1147.00
+  iter   8 best= 1152.00 elite-mean= 1151.22 mean-cand= 1150.05
+  iter   9 best= 1149.71 elite-mean= 1149.46 mean-cand= 1149.29
+  iter  10 best= 1149.75 elite-mean= 1149.51 mean-cand= 1148.96
+  iter  11 best= 1150.36 elite-mean= 1149.59 mean-cand= 1149.19
+  iter  12 best= 1149.88 elite-mean= 1149.26 mean-cand= 1148.90
+  iter  13 best= 1151.72 elite-mean= 1151.62 mean-cand= 1150.94
+  iter  14 best= 1150.64 elite-mean= 1150.49 mean-cand= 1150.02
+  iter  15 best= 1150.17 elite-mean= 1149.99 mean-cand= 1149.46
+  iter  16 best= 1149.48 elite-mean= 1149.45 mean-cand= 1149.01
+  iter  17 best= 1151.48 elite-mean= 1151.35 mean-cand= 1151.05
+  iter  18 best= 1148.70 elite-mean= 1148.51 mean-cand= 1147.92
+  iter  19 best= 1149.91 elite-mean= 1149.67 mean-cand= 1148.95
+  iter  20 best= 1150.02 elite-mean= 1149.97 mean-cand= 1149.91
+  iter  21 best= 1152.08 elite-mean= 1151.99 mean-cand= 1151.73
+  iter  22 best= 1150.29 elite-mean= 1150.16 mean-cand= 1149.78
+  iter  23 best= 1151.27 elite-mean= 1151.11 mean-cand= 1150.81
+  iter  24 best= 1149.38 elite-mean= 1149.19 mean-cand= 1148.69
+  iter  25 best= 1152.63 elite-mean= 1152.50 mean-cand= 1152.16
+  iter  26 best= 1151.16 elite-mean= 1151.09 mean-cand= 1150.66
+  iter  27 best= 1151.71 elite-mean= 1151.57 mean-cand= 1150.94
+  iter  28 best= 1151.17 elite-mean= 1151.00 mean-cand= 1150.82
+  iter  29 best= 1151.74 elite-mean= 1151.69 mean-cand= 1151.41
+  iter  30 best= 1148.03 elite-mean= 1147.86 mean-cand= 1147.70
+  iter  31 best= 1147.60 elite-mean= 1147.42 mean-cand= 1147.06
+  iter  32 best= 1152.25 elite-mean= 1152.11 mean-cand= 1151.61
+  iter  33 best= 1151.67 elite-mean= 1151.53 mean-cand= 1151.52
+  iter  34 best= 1150.42 elite-mean= 1150.35 mean-cand= 1150.28
+  iter  35 best= 1148.85 elite-mean= 1148.66 mean-cand= 1148.34
+  iter  36 best= 1149.48 elite-mean= 1149.36 mean-cand= 1149.03
+  iter  37 best= 1152.06 elite-mean= 1151.90 mean-cand= 1151.70
+  iter  38 best= 1150.48 elite-mean= 1150.37 mean-cand= 1150.06
+  iter  39 best= 1148.21 elite-mean= 1148.11 mean-cand= 1147.83
+最优(参数化)                  mean= 1229.96 ± 0.19  sd= 102.6  p5/50/95=1063/1229/1400  laws=10.98  3灾=2.46  余波+5.89  白嫖重衍=2.27
+随机合法动作                   mean=  690.67 ± 0.25  sd=  79.1  p5/50/95=574/682/833  laws=9.60  3灾=0.20  余波+8.60  白嫖重衍=1.00
+只放牌不打法则                  mean=  872.75 ± 0.25  sd=  78.6  p5/50/95=751/869/1008  laws=0.00  3灾=0.60  余波+0.00  白嫖重衍=0.00
+贪心+法则                    mean= 1155.42 ± 0.33  sd= 103.3  p5/50/95=988/1154/1328  laws=6.78  3灾=2.01  余波+6.23  白嫖重衍=1.35
+铭文影子价格 μ = 0.26
+灾星稀缺惩罚 pZ = 0.37
+各法则额外价值 b: 易象=-7.3, 增辉=-12.5, 敛芒=-12.5, 昭示=27.1, 引辰=-2.5, 拓途=-2.4, 重衍=14.6
+各回合触腕伤害未来价值 φ: 154, 88, 100, 44, 78, 69
+done in 247s -> /Users/sujiajie/Desktop/Morimens Research/TuluNativity/results/param/final

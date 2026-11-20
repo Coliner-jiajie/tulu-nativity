@@ -1,0 +1,30 @@
+{
+  "_comment": "60 级面板 + 12 个黄金造物 + 潮蚀失去 6 层。rho、h 由 panel 推导（见 tulu/config.py）。所有规则假设见 docs/model_spec.md。",
+  "panel": {
+    "con": 167,
+    "atk": 194,
+    "def": 108,
+    "hp_per_100_con": 289,
+    "stat_bonus": 0.3,
+    "gold": 12,
+    "silver": 0,
+    "other_counts_as_silver": 2,
+    "silver_atk": 0.15,
+    "silver_def": 0.03,
+    "tide_layers_lost": 6,
+    "tide_hp_bonus": 0.8
+  },
+  "rules": {
+    "N": 6,
+    "I0": 50,
+    "imax": 50,
+    "after": 1,
+    "lawcost": 5,
+    "cap": 12,
+    "m": 1.25,
+    "mode": 0,
+    "firstgrow": 0,
+    "kappa": 3.0
+  },
+  "final_nuke": 80.0
+}

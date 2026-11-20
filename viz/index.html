@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>诞临 · 最优出牌回放</title>
+<style>
+:root{
+  --bg:#080c18; --bg2:#101830; --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.10);
+  --tx:#e8ebf5; --mut:#8f98b3; --gold:#f2c14e; --ok:#5eead4;
+  --z1:#ff8a65; --z2:#c4232f; --z3:#5b0f1b;   /* 灾 */
+  --h1:#5eead4; --h2:#0f9488; --h3:#0b3f46;   /* 垣 */
+  --y1:#c4b5fd; --y2:#7c3aed; --y3:#2e1a63;   /* 蕴 */
+  --zc:#ff6b6b; --hc:#2dd4bf; --yc:#a78bfa;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,"PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
+body{background:radial-gradient(1200px 700px at 30% -10%,#1a2550 0,transparent 60%),radial-gradient(900px 600px at 100% 20%,#2a1650 0,transparent 55%),var(--bg);min-height:100vh}
+button,select{font:inherit;color:inherit}
+header{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line);background:rgba(8,12,24,.7)}
+header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.06em}
+header h1 small{font-weight:400;color:var(--mut);margin-left:8px;font-size:12px;letter-spacing:0}
+.field{display:flex;align-items:center;gap:8px;color:var(--mut)}
+select{background:#141b33;border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:150px;cursor:pointer}
+.btn{background:#141b33;border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;transition:.15s}
+.btn:hover{background:#1d2748;border-color:rgba(255,255,255,.25)}
+.btn:active{transform:translateY(1px)}
+.btn.on{background:#2a2250;border-color:var(--gold);color:var(--gold)}
+.spacer{flex:1}
+.pdesc{width:100%;color:var(--mut);font-size:12.5px;margin-top:-4px}
+.pdesc b{color:var(--gold);font-weight:600}
+
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;padding:16px 20px 28px;max-width:1700px;margin:0 auto}
+@media (max-width:1100px){main{grid-template-columns:1fr}}
+
+/* HUD */
+#hud{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) minmax(0,.9fr);gap:12px;margin-bottom:12px}
+@media (max-width:760px){#hud{grid-template-columns:1fr}}
+.card-box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.lab{font-size:11.5px;color:var(--mut);letter-spacing:.08em;margin-bottom:4px;display:flex;justify-content:space-between}
+#pips{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.pip{border:1px solid var(--line);border-radius:8px;padding:4px 4px 5px;text-align:center;background:rgba(255,255,255,.025);min-height:52px;transition:.3s}
+.pip .n{font-size:11px;color:var(--mut)}
+.pip .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;min-height:22px}
+.pip .p{font-size:11px;letter-spacing:.1em;min-height:15px}
+.pip.cur{border-color:var(--gold);background:rgba(242,193,78,.08);box-shadow:0 0 0 1px rgba(242,193,78,.3),0 0 18px rgba(242,193,78,.18)}
+.pip.done{background:rgba(255,255,255,.06)}
+.zc{color:var(--zc)}.hc{color:var(--hc)}.yc{color:var(--yc)}
+.bar{height:10px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}
+.bar>i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:6px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.bar .tick{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,.45)}
+.big{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.sub{font-size:12px;color:var(--mut)}
+#totalbox .big{color:var(--gold)}
+
+/* 舞台 */
+#stage{position:relative;height:585px;border-radius:18px;border:1px solid var(--line);overflow:hidden;
+  background:radial-gradient(600px 300px at 50% 0,rgba(124,92,255,.14),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+  --tm:.6s}
+#stars{position:absolute;inset:0;pointer-events:none;opacity:.7}
+.zonelab{position:absolute;font-size:11.5px;color:var(--mut);letter-spacing:.12em;pointer-events:none}
+.slot{position:absolute;border-radius:14px;border:2px dashed rgba(255,255,255,.16);background:rgba(255,255,255,.025);display:flex;align-items:flex-end;justify-content:center;color:var(--mut);transition:.3s}
+.slot span{position:absolute;bottom:-22px;font-size:12px;letter-spacing:.05em;white-space:nowrap}
+.slot.hot{border-color:var(--gold);box-shadow:0 0 24px rgba(242,193,78,.35)}
+.pile{position:absolute;text-align:center;font-size:12px;color:var(--mut)}
+.pile .stack{position:relative}
+.pile .stack i{position:absolute;inset:0;border-radius:12px;border:1.5px solid rgba(255,255,255,.25);background:linear-gradient(160deg,#27315c,#141a36)}
+.pile .stack b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;z-index:3;font-variant-numeric:tabular-nums}
+.pile .chips{margin-top:8px;display:flex;gap:6px;justify-content:center;font-variant-numeric:tabular-nums}
+.chips span{padding:0 6px;border-radius:10px;background:rgba(255,255,255,.07);font-size:12px}
+.pile .nm{margin-top:6px;letter-spacing:.1em}
+
+/* 星潮面板 */
+#tide{position:absolute;left:50%;transform:translateX(-50%);width:min(540px,62%);border-radius:14px;border:1px solid var(--line);
+  background:rgba(10,14,30,.72);padding:8px 14px 10px;text-align:center;backdrop-filter:blur(4px);transition:border-color .4s,box-shadow .4s,opacity .4s;z-index:40}
+#tide.live{border-color:var(--gold);box-shadow:0 0 30px rgba(242,193,78,.25)}
+#tide.idle{opacity:.55}
+#tide .tt{font-size:12px;color:var(--mut);letter-spacing:.2em}
+#tide .pat{font-size:20px;letter-spacing:.35em;font-family:"Songti SC","Noto Serif SC",serif;margin:2px 0}
+#tide .dots{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;min-height:14px;margin:3px 0}
+#tide .dots i{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.12);transition:.15s}
+#tide .dots i.on{background:var(--gold);box-shadow:0 0 10px var(--gold);transform:scale(1.15)}
+#tide .eq{font-size:15px;font-variant-numeric:tabular-nums}
+#tide .eq b{color:var(--gold);font-size:18px}
+#tide .brk{font-size:12px;color:var(--mut)}
+
+/* 卡牌 */
+.card{position:absolute;left:0;top:0;width:var(--cw);height:var(--ch);font-size:calc(var(--cw)*.125);
+  transition:transform var(--tm) cubic-bezier(.22,.9,.28,1),opacity calc(var(--tm)*.8) ease,filter .3s;will-change:transform;user-select:none}
+.card.nt{transition:none}
+.face{position:absolute;inset:0;border-radius:calc(var(--cw)*.1);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  padding:.45em .4em .5em;border:2px solid rgba(255,255,255,.28);box-shadow:0 6px 16px rgba(0,0,0,.45),inset 0 0 22px rgba(255,255,255,.08)}
+.face::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 30% 10%,rgba(255,255,255,.28),transparent 45%);pointer-events:none}
+.k0 .face{background:linear-gradient(160deg,var(--z1),var(--z2) 62%,var(--z3))}
+.k1 .face{background:linear-gradient(160deg,var(--h1),var(--h2) 62%,var(--h3))}
+.k2 .face{background:linear-gradient(160deg,var(--y1),var(--y2) 62%,var(--y3))}
+.face .rk{align-self:flex-start;font-size:1.25em;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.face .gl{font-size:2.9em;line-height:1;font-family:"Songti SC","Noto Serif SC","STSong",serif;font-weight:900;text-shadow:0 2px 6px rgba(0,0,0,.45)}
+.face .st{font-size:.95em;letter-spacing:.05em;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.face .ef{font-size:.9em;background:rgba(0,0,0,.32);padding:0 .5em;border-radius:1em;font-variant-numeric:tabular-nums}
+.face .orig{position:absolute;right:.3em;top:.35em;font-size:.78em;background:rgba(0,0,0,.55);padding:0 .4em;border-radius:.8em;color:var(--gold)}
+.card.mod .face{border-color:var(--gold);box-shadow:0 6px 16px rgba(0,0,0,.45),0 0 14px rgba(242,193,78,.55)}
+.law .face{background:linear-gradient(160deg,#323b66,#171d3a 65%,#0e1226);border-color:rgba(242,193,78,.65);justify-content:flex-start;gap:.25em;padding-top:.6em}
+.law .face::after{content:"";position:absolute;inset:4px;border:1px solid rgba(242,193,78,.25);border-radius:calc(var(--cw)*.07)}
+.law .gl{color:var(--gold);font-size:2.4em}
+.law .nm{font-size:1.2em;font-weight:700;letter-spacing:.15em;color:#fff}
+.law .ds{font-size:.82em;color:#b8c0de;text-align:center;line-height:1.25;padding:0 .2em}
+.law .cost{position:absolute;left:.35em;top:.35em;width:1.9em;height:1.9em;border-radius:50%;background:radial-gradient(circle at 35% 30%,#93c5fd,#2563eb);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1em;box-shadow:0 0 8px rgba(59,130,246,.7);z-index:2}
+.law .cost.free{background:radial-gradient(circle at 35% 30%,#86efac,#16a34a);box-shadow:0 0 8px rgba(34,197,94,.7)}
+.card.cast .face{box-shadow:0 0 50px rgba(242,193,78,.9),0 0 90px rgba(242,193,78,.45)}
+.card.pulse .face{animation:pulse .9s ease}
+@keyframes pulse{0%{box-shadow:0 0 0 rgba(242,193,78,0)}30%{box-shadow:0 0 36px rgba(242,193,78,.95)}100%{}}
+.card.morph .face{animation:morph .7s ease}
+@keyframes morph{0%{filter:brightness(1)}35%{filter:brightness(2.2) saturate(1.4);transform:rotateY(90deg)}70%{filter:brightness(1.5)}100%{filter:none;transform:none}}
+.fx{position:absolute;z-index:80;pointer-events:none;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,.8);animation:floatup 1.3s ease-out forwards}
+@keyframes floatup{0%{opacity:0;transform:translate(-50%,6px) scale(.7)}15%{opacity:1;transform:translate(-50%,-6px) scale(1.15)}100%{opacity:0;transform:translate(-50%,-48px) scale(1)}}
+.fx.banner{font-size:34px;letter-spacing:.3em;font-family:"Songti SC","Noto Serif SC",serif;color:var(--gold);animation:banner 1.6s ease-out forwards}
+@keyframes banner{0%{opacity:0;transform:translate(-50%,0) scale(.6)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}70%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-10px) scale(1)}}
+#caption{margin-bottom:12px;min-height:56px;padding:10px 16px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:15px;line-height:1.55}
+#caption .tag{display:inline-block;font-size:11.5px;padding:0 8px;border-radius:10px;margin-right:8px;background:rgba(255,255,255,.1);letter-spacing:.08em;vertical-align:1px}
+#over{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:120;background:rgba(6,9,20,.55);backdrop-filter:blur(3px)}
+#over.show{display:flex}
+#over .box{background:rgba(16,22,48,.95);border:1px solid var(--gold);border-radius:18px;padding:22px 34px;text-align:center;box-shadow:0 0 60px rgba(242,193,78,.25);min-width:360px}
+#over .t{font-size:13px;color:var(--mut);letter-spacing:.3em}
+#over .n{font-size:54px;font-weight:900;color:var(--gold);font-variant-numeric:tabular-nums}
+#over .f{color:var(--mut);margin-top:2px}
+#over .bars{display:flex;gap:8px;align-items:flex-end;justify-content:center;height:80px;margin:14px 0 4px}
+#over .bars div{width:34px;background:linear-gradient(180deg,#a78bfa,#4c1d95);border-radius:5px 5px 0 0;position:relative}
+#over .bars div span{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--mut)}
+
+/* 控制条 */
+#controls{position:sticky;bottom:10px;z-index:90;backdrop-filter:blur(8px);background:rgba(14,19,40,.88)!important;margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+#controls .btn{min-width:42px;text-align:center}
+#play{min-width:84px;background:#2a2250;border-color:var(--gold);color:var(--gold);font-weight:700}
+#scrub{flex:1;min-width:200px;accent-color:var(--gold)}
+#pos{color:var(--mut);font-variant-numeric:tabular-nums;min-width:70px;text-align:right}
+.kbd{font-size:11.5px;color:var(--mut);width:100%}
+
+/* 右侧 */
+aside{display:flex;flex-direction:column;gap:12px;min-width:0}
+#decision .ti{font-size:13.5px;font-weight:600;margin-bottom:8px}
+.cand{position:relative;padding:5px 8px;border-radius:8px;margin-bottom:5px;border:1px solid transparent;font-size:12.5px;overflow:hidden}
+.cand .fill{position:absolute;inset:0 auto 0 0;background:rgba(255,255,255,.07);border-radius:8px;transition:width .5s}
+.cand.sel{border-color:var(--gold)}
+.cand.sel .fill{background:rgba(242,193,78,.22)}
+.cand .row{position:relative;display:flex;justify-content:space-between;gap:10px}
+.cand .row b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.cand.sel .row span::before{content:"✓ ";color:var(--gold)}
+#decision .note{color:var(--mut);font-size:12.5px}
+#log{max-height:330px;overflow:auto;padding:6px;position:relative}
+#log .it{display:flex;gap:8px;padding:4px 8px;border-radius:8px;cursor:pointer;font-size:12.5px;align-items:flex-start;border:1px solid transparent}
+#log .it:hover{background:rgba(255,255,255,.06)}
+#log .it.cur{background:rgba(242,193,78,.12);border-color:rgba(242,193,78,.45)}
+#log .it .dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:#64748b}
+#log .it .r{flex:none;margin-left:auto;color:var(--mut);font-variant-numeric:tabular-nums}
+#log .sep{font-size:11.5px;color:var(--gold);letter-spacing:.2em;margin:8px 8px 2px;border-top:1px solid var(--line);padding-top:6px}
+.ev-place .dot{background:#60a5fa!important}.ev-law .dot{background:var(--gold)!important}.ev-tide .dot{background:#f87171!important}
+.ev-pick .dot{background:#fbbf24!important}.ev-end .dot{background:#94a3b8!important}.ev-start .dot{background:#34d399!important}.ev-over .dot{background:#e879f9!important}
+details summary{cursor:pointer;color:var(--mut);font-size:12.5px;letter-spacing:.1em}
+details .rl{font-size:12.5px;color:#c3cae0;margin-top:8px}
+details .rl li{margin:3px 0}
+details .rl b{color:var(--gold)}
+</style>
+</head>
+<body>
+<header>
+  <h1>诞临 · 最优出牌回放<small>神王·图鲁 · 诞临阶段 6 回合</small></h1>
+  <label class="field">策略 <select id="selPolicy"></select></label>
+  <label class="field">对局 <select id="selEp"></select></label>
+  <button class="btn" id="bBest" title="本策略得分最高的一局">最高分</button>
+  <button class="btn" id="bMed" title="本策略得分居中的一局">中位</button>
+  <button class="btn" id="bWorst" title="本策略得分最低的一局">最低分</button>
+  <button class="btn" id="bRand" title="随机一局">随机</button>
+  <span class="spacer"></span>
+  <span class="sub" id="seedHint">同一个种子 = 同样的开局，切换策略可对比</span>
+  <div class="pdesc" id="pdesc"></div>
+</header>
+
+<main>
+  <section>
+    <div id="hud">
+      <div class="card-box"><div class="lab"><span>回合进度</span><span id="hudTurn"></span></div><div id="pips"></div></div>
+      <div class="card-box"><div class="lab"><span>记忆铭文</span><span id="hudI"></span></div><div class="bar" id="ibar"><i></i></div>
+        <div class="lab" style="margin-top:8px"><span>触腕伤害 B（×ATK）</span><span id="hudB" style="color:var(--tx);font-variant-numeric:tabular-nums"></span></div></div>
+      <div class="card-box" id="totalbox"><div class="lab"><span>累计倍率（×ATK）</span></div><div class="big" id="total">0.0</div><div class="sub" id="totalSub">终局另加「忘却前夜」+80</div><div class="sub" id="totalReal" style="color:var(--gold);margin-top:4px"></div></div>
+    </div>
+
+    <div id="caption"></div>
+    <div id="stage">
+      <canvas id="stars"></canvas>
+      <div id="tide" class="idle"></div>
+      <div id="over"><div class="box"></div></div>
+    </div>
+
+    <div id="controls">
+      <button class="btn" id="bFirst" title="回到开头 (Home)">⏮</button>
+      <button class="btn" id="bPrevT" title="上一回合 ([)">⏪</button>
+      <button class="btn" id="bPrev" title="上一步 (←)">◀</button>
+      <button class="btn" id="play" title="播放/暂停 (空格)">▶ 播放</button>
+      <button class="btn" id="bNext" title="下一步 (→)">▶</button>
+      <button class="btn" id="bNextT" title="下一回合 (])">⏩</button>
+      <button class="btn" id="bLast" title="跳到结尾 (End)">⏭</button>
+      <label class="field">速度 <select id="selSpd">
+        <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+      <input type="range" id="scrub" min="0" max="0" value="0">
+      <span id="pos"></span>
+      <div class="kbd">快捷键：空格 播放/暂停 · ← → 单步 · [ ] 换回合 · Home/End 首尾 · 点击右侧日志任意一步可跳转</div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card-box" id="decision"></div>
+    <div class="card-box" id="log"></div>
+    <div class="card-box"><details><summary>规则速查</summary><ul class="rl" id="rules"></ul></details></div>
+  </aside>
+</main>
+
+<script src="data.js"></script>
+<script>
+"use strict";
+const D = window.TULU_DATA;
+const META = D.meta;
+const KN = ["灾","垣","蕴"], KC = ["zc","hc","yc"];
+const ROMAN = ["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ"];
+const LAW = ["易象","增辉","敛芒","昭示","引辰","拓途","重衍"];
+const LAWG = ["易","增","敛","昭","引","拓","重"];
+const LAWD = ["手中星象各自随机变为另两种之一","手中星象星阶 +1","手中星象星阶 −1","发现 3 张法则，选 1 张，消耗 0","抽 2 张星象","随机获得 3 张法则","清空星轨与手牌，重抽 4 星象，得 2 法则"];
+const SN = c => KN[Math.floor(c/5)] + (c%5+1);
+const FEFF = [META.fZ, META.fH, META.fY];
+const $ = s => document.querySelector(s);
+const stage = $("#stage");
+
+/* ---------- 状态 ---------- */
+let EP = null, F = [], cur = 0, playing = false, timer = null, speed = 1, tideTok = 0;
+const els = new Map();           // key -> element
+let shownTotal = 0, rafTot = 0;
+
+/* ---------- 星空背景 ---------- */
+function drawStars(){
+  const c = $("#stars"), w = c.width = stage.clientWidth, h = c.height = stage.clientHeight, g = c.getContext("2d");
+  g.clearRect(0,0,w,h);
+  let s = 12345; const rnd = () => (s = (s*1664525+1013904223) >>> 0) / 4294967296;
+  for(let i=0;i<110;i++){ g.globalAlpha = .15 + rnd()*.5; g.fillStyle = "#fff"; g.beginPath(); g.arc(rnd()*w, rnd()*h, rnd()*1.3+.2, 0, 7); g.fill(); }
+}
+
+/* ---------- 几何 ---------- */
+function geo(){
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const cw = Math.max(62, Math.min(96, W*0.085)), ch = cw*1.4;
+  const gap = cw*0.55;
+  const slotX = j => W/2 + (j-2)*(cw+gap) - cw/2;
+  const slotY = 30;
+  const tideY = slotY + ch + 34, tideH = 122;
+  const lawS = .84, lawY = tideY + tideH + 8;
+  const handY = H - ch - 18;
+  return {W,H,cw,ch,slotX,slotY,tideY,tideH,lawS,lawY,handY,
+    drawX:16, drawY:34, discX:W-16-cw, discY:34};
+}
+let G = geo();
+function applyGeo(){
+  G = geo();
+  stage.style.setProperty("--cw", G.cw+"px"); stage.style.setProperty("--ch", G.ch+"px");
+  drawStars();
+  // 静态区域
+  stage.querySelectorAll(".slot,.pile,.zonelab").forEach(e=>e.remove());
+  for(let j=1;j<=3;j++){
+    const s = document.createElement("div"); s.className="slot"; s.id="slot"+j;
+    s.style.cssText = `left:${G.slotX(j)-4}px;top:${G.slotY-4}px;width:${G.cw+8}px;height:${G.ch+8}px`;
+    s.innerHTML = `<span>第 ${j} 位 · 卡效 ×${j}</span>`; stage.appendChild(s);
+  }
+  for(const [id,x,y,nm] of [["pDraw",G.drawX,G.drawY,"抽牌堆"],["pDisc",G.discX,G.discY,"弃牌堆"]]){
+    const p = document.createElement("div"); p.className="pile"; p.id=id; p.style.cssText=`left:${x}px;top:${y}px;width:${G.cw}px`;
+    p.innerHTML = `<div class="stack" style="height:${G.ch}px"><i style="transform:translate(4px,4px)"></i><i style="transform:translate(2px,2px)"></i><i></i><b>0</b></div><div class="chips"></div><div class="nm">${nm}</div>`;
+    stage.appendChild(p);
+  }
+  const tide = $("#tide"); tide.style.top = G.tideY+"px";
+  tide.style.minHeight = G.tideH+"px";
+  const lb = document.createElement("div"); lb.className="zonelab"; lb.textContent="法则"; lb.style.cssText=`left:16px;top:${G.lawY+6}px`; stage.appendChild(lb);
+  const hb = document.createElement("div"); hb.className="zonelab"; hb.textContent="手牌（星象）"; hb.style.cssText=`left:16px;top:${G.handY-18}px`; stage.appendChild(hb);
+}
+
+/* ---------- 卡牌元素 ---------- */
+function starFace(c, o){
+  const k = Math.floor(c/5), r = c%5;
+  return `<div class="face"><span class="rk">${ROMAN[r]}</span><span class="gl">${KN[k]}</span><span class="st">${"★".repeat(r+1)}</span><span class="ef">卡效 ${FEFF[k]}</span>${c!==o?`<span class="orig">原 ${SN(o)}</span>`:""}</div>`;
+}
+function lawFace(lid, cost){
+  return `<div class="face"><span class="cost ${cost?"":"free"}">${cost}</span><span class="gl">${LAWG[lid]}</span><span class="nm">${LAW[lid]}</span><span class="ds">${LAWD[lid]}</span></div>`;
+}
+function mkCard(key, type, k){
+  const e = document.createElement("div");
+  e.className = "card " + (type==="law" ? "law" : "k"+k);
+  e.dataset.key = key; e.dataset.sig = "";
+  stage.appendChild(e); els.set(key, e); return e;
+}
+const tf = (x,y,s=1,r=0) => `translate(${x}px,${y}px) scale(${s}) rotate(${r}deg)`;
+
+function fanX(n, i, cw, W, left, right){
+  const avail = W - left - right;
+  const step = n>1 ? Math.min(cw+12, (avail-cw)/(n-1)) : 0;
+  const tot = step*(n-1)+cw;
+  return left + (avail-tot)/2 + step*i;
+}
+
+/* ---------- 渲染一帧 ---------- */
+function render(i, anim){
+  const f = F[i], prev = cur;
+  const want = new Map();
+  // 手牌
+  const hand = f.h.slice().sort((a,b)=>a[0]-b[0]);
+  hand.forEach((h,idx)=>want.set("c"+h[0], {t:"star", c:h[1], o:h[2], x:fanX(hand.length, idx, G.cw, G.W, 150, 150), y:G.handY, s:1, z:10+idx, grp:"hand"}));
+  // 法则
+  const laws = f.l.slice().sort((a,b)=>a[0]-b[0]);
+  const lw = G.cw*G.lawS;
+  laws.forEach((l,idx)=>want.set("c"+l[0], {t:"law", lid:l[1], cost:l[2], x:fanX(laws.length, idx, lw, G.W, 150, 150)-(G.cw-lw)/2, y:G.lawY, s:G.lawS, z:5+idx, grp:"law"}));
+  // 星轨
+  f.k.forEach((q,idx)=>want.set("c"+q[0], {t:"star", c:q[1], o:q[2], x:G.slotX(idx+1), y:G.slotY, s:1, z:30+idx, grp:"track"}));
+
+  const newKeys = [];
+  for(const [key,w] of want){
+    let e = els.get(key);
+    const isNew = !e;
+    if(isNew){
+      e = mkCard(key, w.t, w.t==="star" ? Math.floor(w.c/5) : 0);
+      newKeys.push(key);
+      if(anim){
+        // 飞入起点：星象来自抽牌堆；法则从法则区上方淡入
+        e.classList.add("nt");
+        if(w.t==="star") e.style.transform = tf(G.drawX, G.drawY, .6), e.style.opacity = 0;
+        else e.style.transform = tf(G.W/2-G.cw/2, G.lawY-30, .3), e.style.opacity = 0;
+        void e.offsetWidth; e.classList.remove("nt");
+      } else { e.classList.add("nt"); e.style.opacity = 1; }
+    }
+    // 内容（形态变化时翻面）
+    const sig = w.t==="star" ? w.c+"/"+w.o : w.lid+"/"+w.cost;
+    if(e.dataset.sig !== sig){
+      const old = e.dataset.sig; e.dataset.sig = sig;
+      if(w.t==="star"){
+        e.className = e.className.replace(/\bk[012]\b/, "k"+Math.floor(w.c/5));
+        e.innerHTML = starFace(w.c, w.o);
+        e.classList.toggle("mod", w.c!==w.o);
+      } else e.innerHTML = lawFace(w.lid, w.cost);
+      if(!isNew && old && anim && w.t==="star"){ e.classList.remove("morph"); void e.offsetWidth; e.classList.add("morph"); }
+    }
+    e.style.zIndex = w.z;
+    const delay = (isNew && anim) ? newKeys.length*0.09 : 0;
+    e.style.transitionDelay = delay+"s";
+    e.style.opacity = 1;
+    e.style.transform = tf(w.x, w.y, w.s);
+    if(isNew && !anim) requestAnimationFrame(()=>e.classList.remove("nt"));
+  }
+  // 离场
+  for(const [key,e] of [...els]){
+    if(want.has(key)) continue;
+    els.delete(key);
+    const isCast = anim && f.played && "c"+f.played[0]===key;
+    if(!anim){ e.remove(); continue; }
+    e.style.transitionDelay = "0s";
+    if(isCast){
+      e.classList.add("cast"); e.style.zIndex = 90;
+      e.style.transform = tf(G.W/2-G.cw/2, G.tideY-6, 1.35, -3);
+      setTimeout(()=>{ e.style.opacity = 0; e.style.transform = tf(G.W/2-G.cw/2, G.tideY-30, 1.7, 0); }, 900/speed);
+      setTimeout(()=>e.remove(), 1700/speed);
+    } else {
+      e.style.zIndex = 8;
+      const toDisc = e.classList.contains("law") ? null : [G.discX, G.discY, .6];
+      if(toDisc) e.style.transform = tf(...toDisc); else e.style.transform = tf(G.W/2-G.cw/2, G.lawY+20, .3);
+      e.style.opacity = 0;
+      setTimeout(()=>e.remove(), 900/speed);
+    }
+  }
+  cur = i;
+  decorate(f, anim, prev);
+}
+
+/* ---------- 辅助区域（牌堆、HUD、说明、特效） ---------- */
+function chipsHTML(a){
+  const s = [0,0,0]; a.forEach((n,i)=>s[Math.floor(i/5)]+=n);
+  return s.map((n,k)=>`<span class="${KC[k]}">${KN[k]}${n}</span>`).join("");
+}
+function floatText(txt, x, y, color, cls=""){
+  const e = document.createElement("div"); e.className = "fx "+cls; e.textContent = txt;
+  e.style.left = x+"px"; e.style.top = y+"px"; if(color) e.style.color = color;
+  e.style.animationDuration = (1.3/speed)+"s"; stage.appendChild(e); setTimeout(()=>e.remove(), 1700/speed);
+}
+const KCOL = ["#ff8a80","#5eead4","#c4b5fd"];
+// 真实伤害换算（输出层）：真实伤害 = 倍率 × REAL.scale；训练口径忘却前夜 +80，真实口径 +REAL.nukeReal
+const REAL = (typeof META!=="undefined" && META.real) ? META.real : null;
+function fmtDmg(v){ const a=Math.abs(v); return a>=1e8 ? (v/1e8).toFixed(3)+" 亿" : a>=1e4 ? (v/1e4).toFixed(1)+" 万" : v.toFixed(0); }
+function realOf(r){ return REAL ? r*REAL.scale : null; }
+function realTotal(rTurns){ return REAL ? (rTurns+REAL.nukeReal)*REAL.scale : null; }
+
+function setTotal(v, dur){
+  cancelAnimationFrame(rafTot);
+  const from = shownTotal, t0 = performance.now();
+  if(!dur){ shownTotal = v; $("#total").textContent = v.toFixed(1); return; }
+  const step = now=>{
+    const p = Math.min(1,(now-t0)/dur), e = 1-Math.pow(1-p,3);
+    shownTotal = from + (v-from)*e; $("#total").textContent = shownTotal.toFixed(1);
+    if(p<1) rafTot = requestAnimationFrame(step);
+  }; rafTot = requestAnimationFrame(step);
+}
+
+function tideState(i){
+  for(let j=i;j>=0;j--){ if(F[j].ev==="tide") return F[j]; if(F[j].ev==="start") break; }
+  return null;
+}
+function patHTML(cs){ return cs.map(c=>`<span class="${KC[Math.floor(c/5)]}">${SN(c)}</span>`).join(" "); }
+
+function decorate(f, anim, prev){
+  // 牌堆
+  $("#pDraw b").textContent = f.dp.reduce((a,b)=>a+b,0);
+  $("#pDraw .chips").innerHTML = chipsHTML(f.dp);
+  $("#pDisc b").textContent = f.dc.reduce((a,b)=>a+b,0);
+  $("#pDisc .chips").innerHTML = chipsHTML(f.dc);
+  // HUD
+  $("#hudTurn").textContent = f.ev==="over" ? "已结束" : `第 ${f.t} / 6 回合`;
+  const I = f.I;
+  $("#ibar i").style.width = (I/META.I0*100)+"%"; $("#hudI").textContent = `${I} / ${META.I0}　（可再打 ${Math.floor(I/META.lawcost)} 张）`;
+  $("#hudB").textContent = f.B.toFixed(3);
+  // 回合格
+  const pips = $("#pips").children;
+  const done = {};
+  for(let j=0;j<=cur;j++) if(F[j].ev==="tide") done[F[j].t] = F[j];
+  for(let t=1;t<=6;t++){
+    const p = pips[t-1], d = done[t];
+    p.className = "pip" + (t===f.t && f.ev!=="over" ? " cur" : "") + (d ? " done" : "");
+    p.querySelector(".v").textContent = d ? d.tr.toFixed(1) : "";
+    p.querySelector(".p").innerHTML = d ? d.tide.cs.map(c=>`<span class="${KC[Math.floor(c/5)]}">${KN[Math.floor(c/5)]}</span>`).join("") : "";
+  }
+  // 总数
+  const isOver = f.ev==="over";
+  $("#totalSub").textContent = isOver ? `训练口径：${f.R.toFixed(1)} + ${META.nuke}（忘却前夜）= ${(f.R+META.nuke).toFixed(1)}` : `训练口径：终局另加「忘却前夜」+${META.nuke}`;
+  if(REAL) $("#totalReal").textContent = isOver
+    ? `真实伤害 ${fmtDmg(realTotal(f.R))}（含忘却前夜 ${REAL.nukeReal}）`
+    : `回合累计真实伤害 ${fmtDmg(realOf(f.R))}（×${REAL.scale.toFixed(0)}）`;
+  setTotal(f.R, anim ? 800/speed : 0);
+  // 星轨槽高亮
+  for(let j=1;j<=3;j++) $("#slot"+j).classList.toggle("hot", f.ev==="place" && f.slot===j);
+  // 星潮面板
+  decorateTide(f, anim);
+  // 事件特效
+  if(anim){
+    if(f.ev==="place"){
+      const x = G.slotX(f.slot)+G.cw/2, y = G.slotY-6;
+      floatText(`+${f.dmg.toFixed(1)}`, x, y, KCOL[f.kind]);
+      if(f.dB>0) floatText(`B +${f.dB.toFixed(4)}`, x, y+G.ch*.5, "#c4b5fd");
+      const e = els.get("c"+f.cid); if(e){ e.classList.remove("pulse"); void e.offsetWidth; e.classList.add("pulse"); }
+    } else if(f.ev==="law"){
+      floatText(LAW[f.played[1]], G.W/2, G.tideY-4, null, "banner");
+      if(f.played[2]) floatText(`铭文 −${f.played[2]}`, 150, 44, "#93c5fd");
+    } else if(f.ev==="end" && f.gain>0){
+      floatText(`余波：铭文 +${f.gain}`, G.W/2, G.lawY+10, "#93c5fd");
+    } else if(f.ev==="start" && f.t>1){
+      floatText("触腕伤害自然增长", G.W/2, G.slotY+20, "#c4b5fd");
+    }
+  }
+  // 结束面板
+  const ov = $("#over");
+  if(isOver){
+    const tr = EP.turnR, mx = Math.max(...tr);
+    ov.querySelector(".box").innerHTML = `<div class="t">诞临结束</div><div class="n">${(f.R+META.nuke).toFixed(1)}</div>
+      <div class="f">6 回合 ${f.R.toFixed(1)} + 忘却前夜 ${META.nuke}（训练口径）</div>
+      ${REAL ? `<div class="f" style="color:var(--gold)">真实伤害 ${fmtDmg(realTotal(f.R))}　= (${f.R.toFixed(1)} + ${REAL.nukeReal}) × ${REAL.scale.toFixed(0)}</div>` : ""}
+      <div class="bars">${tr.map(v=>`<div style="height:${Math.max(8,v/mx*70)}px"><span>${v.toFixed(0)}</span></div>`).join("")}</div>
+      <div class="sub">各回合倍率 · 共打出 ${EP.laws} 张法则 · 剩余铭文 ${EP.Ileft}</div>`;
+    setTimeout(()=>{ if(cur===F.length-1) ov.classList.add("show"); }, anim ? 900/speed : 0);
+  } else ov.classList.remove("show");
+  // 说明、决策、日志、进度
+  const tagTxt = {start:"回合开始",place:"出星象",law:"打法则",pick:"昭示选择",tide:"星潮奔涌",end:"回合结束",over:"结束"}[f.ev];
+  $("#caption").innerHTML = `<span class="tag">${tagTxt}</span>${f.tx}`;
+  decorateDecision(f);
+  $("#scrub").value = cur; $("#pos").textContent = `${cur+1} / ${F.length}`;
+  document.querySelectorAll("#log .it").forEach(e=>e.classList.toggle("cur", +e.dataset.i===cur));
+  const ce = document.querySelector("#log .it.cur"); if(ce){ const lg=$("#log"); lg.scrollTop = ce.offsetTop - lg.clientHeight/2 + 20; }
+}
+
+function decorateTide(f, anim){
+  const t = $("#tide"), s = tideState(cur);
+  const tok = ++tideTok;
+  if(!s){
+    t.className = "idle";
+    t.innerHTML = `<div class="tt">星潮奔涌</div><div class="brk" style="margin-top:8px">放满 3 张星象后发动<br>次数 = 3 + 星阶加成（同阶 +6 / 连号 +3）+ 种类加成（同类 +6 / 三种各一 +3）</div>`;
+    return;
+  }
+  const i = s.tide, live = f.ev==="tide";
+  t.className = live ? "live" : "";
+  const brk = [`基础 3`]; if(i.a) brk.push(i.an); if(i.b) brk.push(i.bn);
+  const per = (i.per + i.bonus).toFixed(2);
+  const bonusTxt = i.bonus ? `（含 3×B = +${i.bonus.toFixed(2)}）` : "";
+  const dots = Array.from({length:i.hits},()=>"<i></i>").join("");
+  t.innerHTML = `<div class="tt">星潮奔涌</div><div class="pat">${patHTML(i.cs)}</div><div class="dots">${dots}</div>
+    <div class="eq"><span id="hn">${live&&anim?0:i.hits}</span> 次 × ${per} ${bonusTxt}${i.y3>1?` × ${i.y3}`:""} = <b id="td">${live&&anim?"0.0":i.dmg.toFixed(1)}</b></div>
+    <div class="brk">${brk.join(" + ")} = ${i.hits} 次</div>`;
+  const ds = t.querySelectorAll(".dots i");
+  if(live && anim){
+    let n = 0; const gap = Math.max(40, 1100/i.hits)/speed;
+    const tick = ()=>{
+      if(tok!==tideTok) return;
+      if(n<i.hits){ ds[n].classList.add("on"); n++; $("#hn").textContent = n; $("#td").textContent = (i.dmg*n/i.hits).toFixed(1); setTimeout(tick, gap); }
+      else { $("#td").textContent = i.dmg.toFixed(1); floatText(`+${i.dmg.toFixed(1)}`, G.W/2, G.tideY, "#ffd166"); }
+    };
+    setTimeout(tick, 350/speed);
+  } else ds.forEach(d=>d.classList.add("on"));
+}
+
+function decorateDecision(f){
+  const box = $("#decision");
+  if(f.d===undefined){
+    box.innerHTML = `<div class="ti">决策</div><div class="note">${f.ev==="start"?"抽牌阶段：星象与法则由系统随机发放，无需决策。":f.ev==="over"?"本局已结束。":"（无决策）"}</div>`;
+    return;
+  }
+  const d = EP.decs[f.d], cs = d.c;
+  const vs = cs.map(c=>c[1]), mn = Math.min(...vs), mx = Math.max(...vs);
+  const w = v => d.u==="概率 %" ? Math.max(3,v) : (mx===mn ? 100 : 18 + (v-mn)/(mx-mn)*82);
+  const order = cs.map((c,i)=>i).sort((a,b)=>cs[b][1]-cs[a][1]);
+  const best = Math.max(...vs);
+  box.innerHTML = `<div class="lab"><span>当前决策 · ${d.u}</span><span>第 ${d.t} 回合</span></div><div class="ti">${d.ti}</div>`
+    + order.map(i=>{ const c = cs[i]; const val = d.u==="概率 %" ? c[1].toFixed(1)+"%" : c[1].toFixed(1);
+      const delta = (d.u!=="概率 %" && !c[2]) ? ` <span class="sub">(${(c[1]-best).toFixed(1)})</span>` : "";
+      return `<div class="cand ${c[2]?"sel":""}"><div class="fill" style="width:${w(c[1])}%"></div><div class="row"><span>${c[0]}</span><b>${val}${delta}</b></div></div>`; }).join("")
+    + (f.df ? "" : `<div class="note" style="margin-top:6px">↳ 正在执行这次决策的后续步骤（按选中方案继续）</div>`)
+    + (d.u==="评分" ? `<div class="note" style="margin-top:6px">评分 = 尚未结算的卡效 + 星潮 + 触腕价值 + 法则的额外价值 − 铭文成本（参数由 CEM 优化得到）。</div>` : "")
+    + (d.u==="期望总倍率" ? `<div class="note" style="margin-top:6px">数值 = 选这个动作后，按方法 A 打完整局的平均总倍率（不含 +80）；差距 = 与最优候选之差。</div>` : "");
+}
+
+/* ---------- 日志 ---------- */
+function buildLog(){
+  const lg = $("#log"); let h = ""; let lastT = 0;
+  F.forEach((f,i)=>{
+    if(f.ev==="start"){ h += `<div class="sep">第 ${f.t} 回合</div>`; lastT = f.t; }
+    h += `<div class="it ev-${f.ev}" data-i="${i}"><span class="dot"></span><span>${f.tx}</span><span class="r">${f.R.toFixed(0)}</span></div>`;
+  });
+  lg.innerHTML = h;
+  lg.querySelectorAll(".it").forEach(e=>e.onclick = ()=>{ stop(); go(+e.dataset.i); });
+}
+
+/* ---------- 播放控制 ---------- */
+function clearStage(){ for(const [k,e] of els) e.remove(); els.clear(); stage.querySelectorAll(".fx").forEach(e=>e.remove()); }
+function go(i, anim){
+  i = Math.max(0, Math.min(F.length-1, i));
+  if(anim === undefined) anim = (i === cur+1);
+  stage.style.setProperty("--tm", (0.6/speed)+"s");
+  render(i, anim);
+}
+function dur(f){
+  const base = {start:1500, place:1150, law:1700, pick:1100, tide:2900, end:1400, over:0}[f.ev] || 1000;
+  return (base + (f.chg && f.chg.length ? 400 : 0)) / speed;
+}
+function play(){
+  if(cur >= F.length-1) go(0, false);
+  playing = true; $("#play").textContent = "⏸ 暂停";
+  const loop = ()=>{
+    if(!playing) return;
+    if(cur >= F.length-1){ stop(); return; }
+    go(cur+1, true);
+    timer = setTimeout(loop, dur(F[cur]));
+  };
+  timer = setTimeout(loop, cur===0 ? 400 : 100);
+}
+function stop(){ playing = false; clearTimeout(timer); $("#play").textContent = "▶ 播放"; }
+function turnStart(t){ return F.findIndex(f=>f.ev==="start" && f.t===t); }
+function jumpTurn(dir){
+  stop();
+  const t = F[cur].t;
+  const here = turnStart(t);
+  let target;
+  if(dir<0) target = cur>here ? here : turnStart(Math.max(1,t-1));
+  else target = t<6 ? turnStart(t+1) : F.length-1;
+  go(target, false);
+}
+
+/* ---------- 载入对局 ---------- */
+function loadEp(ep, autoplay){
+  stop(); clearStage(); EP = ep; F = ep.frames; cur = 0; shownTotal = 0;
+  $("#scrub").max = F.length-1;
+  $("#pips").innerHTML = Array.from({length:6},(_,i)=>`<div class="pip"><div class="n">第 ${i+1} 回合</div><div class="v"></div><div class="p"></div></div>`).join("");
+  buildLog();
+  render(0, true);
+  $("#selEp").value = ep.id;
+  if(autoplay) play();
+}
+function policyEps(p){ return D.episodes.filter(e=>e.policy===p); }
+function fillEps(p, keepSeed){
+  const eps = policyEps(p);
+  $("#selEp").innerHTML = eps.map(e=>`<option value="${e.id}">种子 ${e.seed} · ${(e.total+META.nuke).toFixed(1)}${REAL ? " · "+fmtDmg(realTotal(e.total)) : ""}</option>`).join("");
+  const pol = META.policies.find(x=>x.key===p);
+  $("#pdesc").innerHTML = `<b>${pol.name}</b>　${pol.desc}　本页 ${pol.n} 局样本均值 ${pol.sample_mean}（含 +${META.nuke}）${REAL ? "　≈ "+fmtDmg((pol.sample_mean-META.nuke+REAL.nukeReal)*REAL.scale)+" 真实伤害" : ""}`;
+  return eps;
+}
+function pick(kind){
+  const p = $("#selPolicy").value, eps = policyEps(p).slice().sort((a,b)=>a.total-b.total);
+  let e;
+  if(kind==="best") e = eps[eps.length-1]; else if(kind==="worst") e = eps[0];
+  else if(kind==="med") e = eps[Math.floor(eps.length/2)]; else e = eps[Math.floor(Math.random()*eps.length)];
+  $("#selEp").value = e.id; loadEp(e, false);
+}
+
+/* ---------- 初始化 ---------- */
+function init(){
+  $("#selPolicy").innerHTML = META.policies.map(p=>`<option value="${p.key}">${p.name}（≈${p.mean}）</option>`).join("");
+  $("#selPolicy").onchange = ()=>{
+    const seed = EP ? EP.seed : 1, p = $("#selPolicy").value;
+    const eps = fillEps(p); const e = eps.find(x=>x.seed===seed) || eps[0]; loadEp(e, false);
+  };
+  $("#selEp").onchange = ()=> loadEp(D.episodes.find(e=>e.id===$("#selEp").value), false);
+  $("#bBest").onclick = ()=>pick("best"); $("#bWorst").onclick = ()=>pick("worst");
+  $("#bMed").onclick = ()=>pick("med"); $("#bRand").onclick = ()=>pick("rand");
+  $("#play").onclick = ()=> playing ? stop() : play();
+  $("#bNext").onclick = ()=>{ stop(); go(cur+1, true); };
+  $("#bPrev").onclick = ()=>{ stop(); go(cur-1, false); };
+  $("#bFirst").onclick = ()=>{ stop(); go(0, false); };
+  $("#bLast").onclick = ()=>{ stop(); go(F.length-1, false); };
+  $("#bPrevT").onclick = ()=>jumpTurn(-1); $("#bNextT").onclick = ()=>jumpTurn(1);
+  $("#selSpd").onchange = e=>{ speed = +e.target.value; stage.style.setProperty("--tm", (0.6/speed)+"s"); };
+  $("#scrub").oninput = e=>{ stop(); go(+e.target.value, false); };
+  document.addEventListener("keydown", e=>{
+    if(["INPUT","SELECT","TEXTAREA"].includes(e.target.tagName) && e.key!==" ") return;
+    if(e.key===" "){ e.preventDefault(); playing?stop():play(); }
+    else if(e.key==="ArrowRight"){ stop(); go(cur+1, true); }
+    else if(e.key==="ArrowLeft"){ stop(); go(cur-1, false); }
+    else if(e.key==="Home"){ stop(); go(0,false); } else if(e.key==="End"){ stop(); go(F.length-1,false); }
+    else if(e.key==="["){ jumpTurn(-1); } else if(e.key==="]"){ jumpTurn(1); }
+  });
+  $("#rules").innerHTML = `
+    <li><b>回合</b>：抽 4 张星象 + 随机 2 张法则；放满 3 张星象即结算「星潮奔涌」并结束回合。</li>
+    <li><b>卡效</b>：星轨第 j 位的星象触发 j 次——灾 ${META.fZ}、垣 ${META.fH}、蕴 ${META.fY}（×ATK）。蕴星还会累积触腕伤害 B。</li>
+    <li><b>星潮</b>：次数 = 3 + 星阶（同阶 +6 / 连号 +3）+ 种类（同类 +6 / 三种各一 +3）；每次 9.6 + 1.6×灾星数；三灾星时每次再加 3×B；三蕴星总伤 ×1.02。</li>
+    <li><b>法则</b>：每张消耗 ${META.lawcost} 层铭文（共 ${META.I0} 层）；回合末未用的法则消散，每张使铭文 +1（余波）。可在放第 3 张前任意时刻打出。</li>
+    <li><b>重衍</b>：先把好牌放进星轨「白嫖」卡效，再清空重抽，是本研究发现的关键打法。</li>
+    <li><b>手牌上限</b> ${META.cap}（星象与法则共用）。ρ=${META.rho}，h=${META.h}。</li>`;
+  applyGeo();
+  new ResizeObserver(()=>{ const had = EP; if(!had) return; const c = cur; clearStage(); applyGeo(); go(c, false); }).observe(stage);
+  const first = META.policies[0].key;
+  $("#selPolicy").value = first; fillEps(first);
+  // 默认展示最强策略里得分最高的一局
+  const eps = policyEps(first).slice().sort((a,b)=>b.total-a.total);
+  loadEp(eps[0], false);
+}
+init();
+</script>
+</body>
+</html>

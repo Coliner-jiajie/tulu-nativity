@@ -1,0 +1,11 @@
+{
+  "_comment": "仅用于输出层：把训练口径的归一化倍率（×ATK、含忘却前夜 +80）换算成真实伤害。训练不读取本文件。乘区关系见 calc_site/公式自纠_v1.md。",
+  "atk_source": "panel",
+  "zhanwu": true,
+  "chengfu": true,
+  "kuangqi": 40,
+  "beizhao": true,
+  "lingsu": true,
+  "ming_layers": 50,
+  "train_nuke": 80.0
+}

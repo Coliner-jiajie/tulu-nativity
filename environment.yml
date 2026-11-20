@@ -1,0 +1,12 @@
+name: tulu
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - numba
+  - matplotlib
+  - pytest
+  # PyTorch 用 conda-forge 版本，与 numba 共用同一份 libomp；
+  # 用 pip 版 torch 会与 conda 的 llvm-openmp 冲突（OMP: Error #15）。
+  - pytorch
