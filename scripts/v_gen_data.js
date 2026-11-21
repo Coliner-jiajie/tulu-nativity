@@ -6,12 +6,15 @@ load("params.js"); load("engine.js");
 const E = TuluEngine, P = TULU_PARAMS, C = P.cfg;
 const N = 40;
 const POL = {
-  expert: { name: "滚动前瞻专家", short: "专家", mean: 1291.0,
-    desc: "目前最强。每个决策点对每个候选动作各模拟 200 局（后续按方法 A 打），选平均总倍率最高的。约 1291。" },
-  param: { name: "方法 A · 参数化最优", short: "参数化", mean: 1229.9,
-    desc: "15 个参数的打分公式 + 一步前瞻，用 CEM 搜索最优参数；30 万局评估 1229.9。" },
-  ppo: { name: "方法 B · PPO 神经网络", short: "PPO", mean: 1196.0,
-    desc: "纯强化学习的演员-评论家网络（贪心动作），2000 轮训练；约 1196。" },
+  expert: { name: "滚动前瞻专家", short: "专家", mean: 1291.0, nameEn: "Rollout Expert",
+    desc: "目前最强。每个决策点对每个候选动作各模拟 200 局（后续按方法 A 打），选平均总倍率最高的。约 1291。",
+    descEn: "Strongest so far. At every decision it simulates 200 games per candidate move (the rest played with Method A) and picks the highest average total multiplier. About 1291." },
+  param: { name: "方法 A · 参数化最优", short: "参数化", mean: 1229.9, nameEn: "Method A · Parametric",
+    desc: "15 个参数的打分公式 + 一步前瞻，用 CEM 搜索最优参数；30 万局评估 1229.9。",
+    descEn: "A scoring formula with 15 parameters plus one-step lookahead, optimized with CEM; 1229.9 over 300,000 games." },
+  ppo: { name: "方法 B · PPO 神经网络", short: "PPO", mean: 1196.0, nameEn: "Method B · PPO neural network",
+    desc: "纯强化学习的演员-评论家网络（贪心动作），2000 轮训练；约 1196。",
+    descEn: "A pure reinforcement-learning actor-critic network (greedy actions), trained for 2000 rounds; about 1196." },
 };
 const episodes = [], pols = [];
 for (const p of ["expert", "param", "ppo"]) {

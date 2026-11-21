@@ -9,6 +9,15 @@ const NT = 15, NL = 7;
 const STAR_TYPE = ["灾", "垣", "蕴"];
 const LAW_NAMES = ["易象", "增辉", "敛芒", "昭示", "引辰", "拓途", "重衍"];
 const STAR_NAMES = []; for (let k = 0; k < 3; k++) for (let r = 1; r <= 5; r++) STAR_NAMES.push(STAR_TYPE[k] + r);
+// ---- 双语文案：bi(fn) 把同一个模板分别以中文 / 英文各求值一次，得到 [中文, 英文] ----
+const STAR_EN = ["Antares", "Scutum", "Pleiades"], LAW_EN = ["Alter", "Gleam", "Dim", "Herald", "Beckon", "Expand", "Recast"], ROMAN_EN = ["I", "II", "III", "IV", "V"];
+let _L = 0;
+const lg = (z, e) => (_L ? e : z);
+const sn = c => _L ? STAR_EN[(c / 5) | 0] + " " + ROMAN_EN[c % 5] : STAR_NAMES[c];
+const ln = l => _L ? LAW_EN[l] : LAW_NAMES[l];
+const kn = k => _L ? STAR_EN[k] : STAR_TYPE[k];
+function bi(fn) { _L = 0; const z = fn(); _L = 1; const e = fn(); _L = 0; return [z, e]; }
+const err = (z, e) => new Error(root.TULU_LANG === "en" ? e : z);
 
 // ---- 配置向量下标 ----
 let ci = 0;
@@ -486,10 +495,10 @@ function ppoProbs(model, obs, mask) {
   return lg;
 }
 const ACTION_NAMES = [];
-STAR_NAMES.forEach(n => ACTION_NAMES.push("放入 " + n));
-LAW_NAMES.forEach(n => ACTION_NAMES.push("打出 " + n));
-LAW_NAMES.forEach(n => ACTION_NAMES.push("打出 " + n + "（0 消耗）"));
-LAW_NAMES.forEach(n => ACTION_NAMES.push("昭示选取 " + n));
+for (let c = 0; c < 15; c++) ACTION_NAMES.push(bi(() => lg("放入 ", "Place ") + sn(c)));
+for (let l = 0; l < 7; l++) ACTION_NAMES.push(bi(() => lg("打出 ", "Play ") + ln(l)));
+for (let l = 0; l < 7; l++) ACTION_NAMES.push(bi(() => lg("打出 " + ln(l) + "（0 消耗）", "Play " + ln(l) + " (cost 0)")));
+for (let l = 0; l < 7; l++) ACTION_NAMES.push(bi(() => lg("昭示选取 ", "Herald pick ") + ln(l)));
 
 // =========================================================================
 // 带帧录制的对局（移植 tulu/viz/recorder.py 的 Game）
@@ -528,14 +537,14 @@ class Game {
   }
   emit(ev, txt, snap, extra) {
     const f = snap || this.snap();
-    f.ev = ev; f.tx = txt;
+    f.ev = ev; f.tx = txt[0]; f.te = txt[1];
     if (this.cur_d !== null) { f.d = this.cur_d; if (this.d_new) { f.df = 1; this.d_new = false; } }
     if (extra) Object.assign(f, extra);
     this.frames.push(f);
     return f;
   }
   decision(title, unit, cands, chosen) {
-    this.decs.push({ t: this.si[O_T], ti: title, u: unit, c: cands.map(([lb, v], i) => [lb, r3(v), i === chosen ? 1 : 0]) });
+    this.decs.push({ t: this.si[O_T], ti: title[0], te: title[1], u: unit, c: cands.map(([lb, v], i) => [lb[0], r3(v), i === chosen ? 1 : 0, lb[1]]) });
     this.cur_d = this.decs.length - 1; this.d_new = true;
   }
   newTurnIds() {
@@ -545,15 +554,17 @@ class Game {
     for (let i = 0; i < si[O_LN]; i++) this.laws.push(this.nid());
   }
   startText() {
-    const t = this.si[O_T];
-    let s = `第 ${t} 回合开始：抽 4 张星象，随机获得 2 张法则`;
-    if (t > 1) s += `；触腕伤害自然增长到 ${this.sf[F_B].toFixed(3)}`;
-    return s;
+    const t = this.si[O_T], B = this.sf[F_B];
+    return bi(() => {
+      let s = lg(`第 ${t} 回合开始：抽 4 张星象，随机获得 2 张法则`, `Turn ${t} begins: draw 4 Asterisms, gain 2 random Runes`);
+      if (t > 1) s += lg(`；触腕伤害自然增长到 ${B.toFixed(3)}`, `; Tentacle DMG grows naturally to ${B.toFixed(3)}`);
+      return s;
+    });
   }
   placeForm(cur) {
     const si = this.si;
     for (let i = 0; i < si[O_HN]; i++) if (si[O_HC + i] === cur) return this.placeIdx(i);
-    throw new Error("手中没有形态为 " + STAR_NAMES[cur] + " 的星象");
+    throw err("手中没有形态为 " + STAR_NAMES[cur] + " 的星象", "No such Asterism in hand: " + bi(() => sn(cur))[1]);
   }
   placeIdx(hi) {
     const { si, sf, cfg, st } = this;
@@ -568,8 +579,11 @@ class Game {
     const dp0 = Array.from(si.subarray(O_DP, O_DP + NT)), dc0 = Array.from(si.subarray(O_DC, O_DC + NT));
     this.hand[hi] = this.hand[this.hand.length - 1]; this.hand.pop();
     this.track.push(cid);
-    let txt = `${STAR_NAMES[cur]} 放入星轨第 ${j} 位，卡效触发 ${j} 次：${gfmt(eff)} × ${j} = ${f1(dmg)}`;
-    if (dB > 0) txt += `；触腕伤害 +${dB.toFixed(4)}`;
+    const txt = bi(() => {
+      let x = lg(`${sn(cur)} 放入星轨第 ${j} 位，卡效触发 ${j} 次：${gfmt(eff)} × ${j} = ${f1(dmg)}`, `${sn(cur)} enters Orbit ${j} and triggers ${j} time${j > 1 ? "s" : ""}: ${gfmt(eff)} × ${j} = ${f1(dmg)}`);
+      if (dB > 0) x += lg(`；触腕伤害 +${dB.toFixed(4)}`, `; Tentacle DMG +${dB.toFixed(4)}`);
+      return x;
+    });
     const ex = { cid, slot: j, dmg: r3(dmg), dB: Math.round(dB * 1e4) / 1e4, kind: k };
     if (j < 3) { placeStar(si, sf, cfg, hi, st); return this.emit("place", txt, null, ex); }
     // 第 3 张：卡效 → 星潮奔涌 → 回合结束
@@ -582,18 +596,21 @@ class Game {
     const R1 = R0 + dmg;
     this.emit("place", txt, this.snap({ hand: handAfter, laws: laws0, track: trackAfter, I: I0, B: B1, R: R1, dp: dp0, dc: dc0, t, opts: [] }), ex);
     const turnR = st[ST_TURNR + t - 1];
-    this.emit("tide", info.txt, this.snap({ hand: handAfter, laws: laws0, track: trackAfter, I: I0, B: B1, R: R1 + tdmg, dp: dp0, dc: dc0, t, opts: [] }),
+    this.emit("tide", [info.txt, info.te], this.snap({ hand: handAfter, laws: laws0, track: trackAfter, I: I0, B: B1, R: R1 + tdmg, dp: dp0, dc: dc0, t, opts: [] }),
       { tide: info, tr: r3(turnR) });
     const dcE = dc0.slice();
     handAfter.forEach(h => { dcE[h[2]]++; }); trackAfter.forEach(q => { dcE[q[2]]++; });
     const gain = Math.min(cfg[C_IMAX] | 0, I0 + (cfg[C_AFTER] | 0) * laws0.length) - I0;
     const B2 = B1 + cfg[C_TIDEB] * cfg[C_RHO] * cfg[C_M] * nY;
-    let etxt = `第 ${t} 回合结束：本回合共 ${f1(turnR)}；弃置手牌与星轨`;
-    if (laws0.length) etxt += `；${laws0.length} 张未用法则消散，余波使铭文 +${gain}`;
+    const etxt = bi(() => {
+      let x = lg(`第 ${t} 回合结束：本回合共 ${f1(turnR)}；弃置手牌与星轨`, `Turn ${t} ends: ${f1(turnR)} this turn; hand and Orbits are discarded`);
+      if (laws0.length) x += lg(`；${laws0.length} 张未用法则消散，余波使铭文 +${gain}`, `; ${laws0.length} unused Rune${laws0.length > 1 ? "s" : ""} fade, Aftershock: Etched Memory +${gain}`);
+      return x;
+    });
     this.emit("end", etxt, this.snap({ hand: [], laws: [], track: [], I: I0 + gain, B: B2, R: sf[F_R], dp: dp0, dc: dcE, t, opts: [] }), { gain, nlaw: laws0.length });
     if (this.done()) {
       this.cur_d = null;
-      this.emit("over", `诞临结束：6 回合合计 ${f1(sf[F_R])}（另有「忘却前夜」+80）`);
+      const Rt = sf[F_R]; this.emit("over", bi(() => lg(`诞临结束：6 回合合计 ${f1(Rt)}（另有「忘却前夜」+80）`, `Theophany ends: ${f1(Rt)} over 6 turns (plus Morimens +80)`)));
     } else {
       this.newTurnIds(); this.cur_d = null;
       this.emit("start", this.startText());
@@ -602,17 +619,20 @@ class Game {
   tideInfo(cs, B, dmg, nZ, nH, nY, hits) {
     const cfg = this.cfg;
     const ks = cs.map(c => (c / 5) | 0), rs = cs.map(c => c % 5 + 1);
-    let a = 0, an = "", b = 0, bn = "";
+    let a = 0, an = ["", ""], b = 0, bn = ["", ""];
     const mn = Math.min(...rs);
-    if (rs[0] === rs[1] && rs[1] === rs[2]) { a = 6; an = "同星阶 +6"; }
-    else if ([...rs].sort((x, y) => x - y).join() === [mn, mn + 1, mn + 2].join()) { a = 3; an = "三连号 +3"; }
-    if (ks[0] === ks[1] && ks[1] === ks[2]) { b = 6; bn = "同种类 +6"; }
-    else if (new Set(ks).size === 3) { b = 3; bn = "三种各一 +3"; }
+    if (rs[0] === rs[1] && rs[1] === rs[2]) { a = 6; an = ["同星阶 +6", "Same Brilliance +6"]; }
+    else if ([...rs].sort((x, y) => x - y).join() === [mn, mn + 1, mn + 2].join()) { a = 3; an = ["三连号 +3", "3 consecutive +3"]; }
+    if (ks[0] === ks[1] && ks[1] === ks[2]) { b = 6; bn = ["同种类 +6", "Same type +6"]; }
+    else if (new Set(ks).size === 3) { b = 3; bn = ["三种各一 +3", "3 different types +3"]; }
     const per = cfg[C_BASEHIT] + cfg[C_PERZ] * nZ;
     const bonus = nZ === 3 ? cfg[C_KAPPA] * B : 0.0;
-    let txt = `星潮奔涌：${hits} 次 × ${(per + bonus).toFixed(2)} = ${f1(dmg)}`;
-    if (nY === 3) txt += `（蕴蕴蕴 ×${gfmt(cfg[C_Y3])}）`;
-    return { hits, a, an, b, bn, per: r3(per), bonus: r3(bonus), dmg: r3(dmg), nZ, nH, nY, pat: ks.map(k => "灾垣蕴"[k]).join(""), cs, txt,
+    const txt = bi(() => {
+      let x = lg(`星潮奔涌：${hits} 次 × ${(per + bonus).toFixed(2)} = ${f1(dmg)}`, `Stars Surge: ${hits} hits × ${(per + bonus).toFixed(2)} = ${f1(dmg)}`);
+      if (nY === 3) x += lg(`（蕴蕴蕴 ×${gfmt(cfg[C_Y3])}）`, ` (3 Pleiades ×${gfmt(cfg[C_Y3])})`);
+      return x;
+    });
+    return { hits, a, an: an[0], ane: an[1], b, bn: bn[0], bne: bn[1], per: r3(per), bonus: r3(bonus), dmg: r3(dmg), nZ, nH, nY, pat: ks.map(k => "灾垣蕴"[k]).join(""), cs, txt: txt[0], te: txt[1],
       y3: nY === 3 ? cfg[C_Y3] : 1.0, B: Math.round(B * 1e4) / 1e4 };
   }
   lawIdx(li) {
@@ -622,41 +642,53 @@ class Game {
     this.laws[li] = this.laws[this.laws.length - 1]; this.laws.pop();
     playLaw(si, sf, cfg, li, st);
     const chg = [];
-    let txt = "";
-    const head = `打出「${LAW_NAMES[lid]}」` + (cost ? `（消耗 ${cost} 层铭文）` : "（0 消耗）");
+    let txt;
+    const head = () => lg(`打出「${ln(lid)}」` + (cost ? `（消耗 ${cost} 层铭文）` : "（0 消耗）"), `Play ${ln(lid)}` + (cost ? ` (costs ${cost} Etched Memory)` : " (cost 0)"));
     if (lid <= 2) {
       hand0.forEach(([hid, c0], i) => { const c1 = si[O_HC + i]; if (c1 !== c0) chg.push([hid, c0, c1]); });
-      const what = ["手中星象各自随机变为另两种之一", "手中星象星阶 +1", "手中星象星阶 −1"][lid];
-      txt = `${head}：${what}` + (chg.length ? "" : "（无变化）");
-      if (chg.length) txt += "：" + chg.map(([, a, b]) => `${STAR_NAMES[a]}→${STAR_NAMES[b]}`).join("、");
+      txt = bi(() => {
+        const what = lg(["手中星象各自随机变为另两种之一", "手中星象星阶 +1", "手中星象星阶 −1"][lid], ["Asterisms in hand randomly transform into another type", "Asterisms in hand +1 Brilliance", "Asterisms in hand −1 Brilliance"][lid]);
+        let x = `${head()}${lg("：", ": ")}${what}` + (chg.length ? "" : lg("（无变化）", " (no change)"));
+        if (chg.length) x += lg("：", ": ") + chg.map(([, a, b]) => `${sn(a)}→${sn(b)}`).join(lg("、", ", "));
+        return x;
+      });
     } else if (lid === 3) {
-      const o = []; for (let j = 0; j < si[O_PN]; j++) o.push(LAW_NAMES[si[O_PO + j]]);
-      txt = `${head}：发现 3 张法则 —— ` + o.join(" / ");
+      const o = []; for (let j = 0; j < si[O_PN]; j++) o.push(si[O_PO + j]);
+      txt = bi(() => `${head()}${lg("：发现 3 张法则 —— ", ": discover 3 Runes — ")}` + o.map(ln).join(" / "));
     } else if (lid === 4) {
       const nNew = si[O_HN] - hn0, forms = [];
-      for (let q = 0; q < nNew; q++) forms.push(STAR_NAMES[si[O_HC + hn0 + q]]);
+      for (let q = 0; q < nNew; q++) forms.push(si[O_HC + hn0 + q]);
       for (let q = 0; q < nNew; q++) this.hand.push(this.nid());
-      txt = `${head}：抽 2 张星象` + (forms.length ? "：" + forms.join("、") : "");
-      if (nNew < 2) txt += `（手牌已满，${2 - nNew} 张进弃牌堆）`;
+      txt = bi(() => {
+        let x = `${head()}${lg("：抽 2 张星象", ": draw 2 Asterisms")}` + (forms.length ? lg("：", ": ") + forms.map(sn).join(lg("、", ", ")) : "");
+        if (nNew < 2) x += lg(`（手牌已满，${2 - nNew} 张进弃牌堆）`, ` (hand full, ${2 - nNew} to the Discard Pile)`);
+        return x;
+      });
     } else if (lid === 5) {
       const base = ln0 - 1, nNew = si[O_LN] - base, names = [];
-      for (let q = 0; q < nNew; q++) names.push(LAW_NAMES[si[O_LI + base + q]]);
+      for (let q = 0; q < nNew; q++) names.push(si[O_LI + base + q]);
       for (let q = 0; q < nNew; q++) this.laws.push(this.nid());
-      txt = `${head}：获得 3 张法则` + (names.length ? "：" + names.join("、") : "");
-      if (nNew < 3) txt += `（手牌已满，${3 - nNew} 张消失）`;
+      txt = bi(() => {
+        let x = `${head()}${lg("：获得 3 张法则", ": gain 3 Runes")}` + (names.length ? lg("：", ": ") + names.map(ln).join(lg("、", ", ")) : "");
+        if (nNew < 3) x += lg(`（手牌已满，${3 - nNew} 张消失）`, ` (hand full, ${3 - nNew} lost)`);
+        return x;
+      });
     } else {
       this.hand = []; this.laws = []; this.track = [];
       for (let i = 0; i < si[O_HN]; i++) this.hand.push(this.nid());
       for (let i = 0; i < si[O_LN]; i++) this.laws.push(this.nid());
-      txt = `${head}：清空星轨与手牌，重新抽 4 张星象、获得 2 张法则`;
-      if (locked) txt += "（已放入星轨的卡效已白嫖）";
+      txt = bi(() => {
+        let x = `${head()}${lg("：清空星轨与手牌，重新抽 4 张星象、获得 2 张法则", ": clear the Orbits and hand, draw 4 Asterisms, gain 2 Runes")}`;
+        if (locked) x += lg("（已放入星轨的卡效已白嫖）", " (effects of cards already in the Orbits are kept)");
+        return x;
+      });
     }
     return this.emit("law", txt, null, { played: [lawid, lid, cost], chg });
   }
   lawById(lid, paid) {
     const si = this.si;
     for (let li = 0; li < si[O_LN]; li++) if (si[O_LI + li] === lid && ((si[O_LC + li] > 0) === paid) && si[O_I] >= si[O_LC + li]) return this.lawIdx(li);
-    throw new Error("找不到法则");
+    throw err("找不到法则", "Rune not found");
   }
   pick(j) {
     const { si, cfg } = this;
@@ -664,7 +696,7 @@ class Game {
     pickOption(si, cfg, j);
     const got = si[O_LN] > ln0;
     if (got) this.laws.push(this.nid());
-    const txt = got ? `昭示：选取「${LAW_NAMES[lid]}」，本回合消耗变为 0` : `昭示：选取「${LAW_NAMES[lid]}」，但手牌已满，无法获得`;
+    const txt = bi(() => got ? lg(`昭示：选取「${ln(lid)}」，本回合消耗变为 0`, `Herald: picked ${ln(lid)}, its cost becomes 0 this turn`) : lg(`昭示：选取「${ln(lid)}」，但手牌已满，无法获得`, `Herald: picked ${ln(lid)}, but the hand is full so it is lost`));
     return this.emit("pick", txt, null, { picked: lid });
   }
   finishPlan(plan) {
@@ -684,10 +716,10 @@ class Game {
   }
   /** 手动操作：kind = place / law（arg 为卡牌 id）或 pick（arg 为发现项下标）。随机数按（种子, 步数）重设，保证可复现。 */
   act(kind, arg) {
-    if (this.done()) throw new Error("本局已结束");
+    if (this.done()) throw err("本局已结束", "This game is over");
     const lg = this.legal();
     const ok = (kind === "place" && lg.place.includes(arg)) || (kind === "law" && lg.law.includes(arg)) || (kind === "pick" && lg.pick.includes(arg));
-    if (!ok) throw new Error("当前不能这样操作");
+    if (!ok) throw err("当前不能这样操作", "That move is not allowed now");
     this.nact++;
     seedRng(this.seed * 1000003 + this.nact * 7919 + 17);
     const n0 = this.frames.length;
@@ -711,12 +743,14 @@ class Game {
 // =========================================================================
 // 策略驱动（生成器：yield 处可让出主线程；runSync 同步跑完）
 // =========================================================================
-function planLabel(plan, tn) { const o = []; for (let i = tn; i < 3; i++) o.push(STAR_NAMES[plan[i]]); return "补满星轨：" + o.join(" → "); }
+function planLabel(plan, tn) { const o = []; for (let i = tn; i < 3; i++) o.push(plan[i]); return bi(() => lg("补满星轨：", "Fill the Orbits: ") + o.map(sn).join(" → ")); }
 function lawLabel(lid, cost, out) {
-  let lab = `打出「${LAW_NAMES[lid]}」` + (cost ? "" : "（0 消耗）");
-  const locks = [out[0], out[1]].filter(x => x >= 0).map(x => STAR_NAMES[x]);
-  if (locks.length) lab += "，先把 " + locks.join("、") + " 放进星轨";
-  return lab;
+  const locks = [out[0], out[1]].filter(x => x >= 0);
+  return bi(() => {
+    let lab = lg(`打出「${ln(lid)}」` + (cost ? "" : "（0 消耗）"), `Play ${ln(lid)}` + (cost ? "" : " (cost 0)"));
+    if (locks.length) lab += lg("，先把 " + locks.map(sn).join("、") + " 放进星轨", ", first placing " + locks.map(sn).join(", ") + " in the Orbits");
+    return lab;
+  });
 }
 function argmax(a) { let b = 0; for (let i = 1; i < a.length; i++) if (a[i] > a[b]) b = i; return b; }
 
@@ -732,10 +766,10 @@ function playParam(game, theta, K = 12) {
       const cands = [];
       for (let j = 0; j < si[O_PN]; j++) {
         const lid = si[O_PO + j];
-        cands.push([`选取「${LAW_NAMES[lid]}」`, lawValue2(lid, 0, si, sf[F_B], t, cfg, theta, K, V0, out)]);
+        cands.push([bi(() => lg(`选取「${ln(lid)}」`, `Pick ${ln(lid)}`)), lawValue2(lid, 0, si, sf[F_B], t, cfg, theta, K, V0, out)]);
       }
       const bj = argmax(cands.map(c => c[1]));
-      game.decision("昭示：从 3 张法则中选 1 张", "评分", cands, bj);
+      game.decision(["昭示：从 3 张法则中选 1 张", "Herald: choose 1 of 3 Runes"], "评分", cands, bj);
       game.pick(bj);
       continue;
     }
@@ -756,7 +790,7 @@ function playParam(game, theta, K = 12) {
     if (bestl >= 0) ci = acts.findIndex(a => a[0] === "law" && a[1] === bestl);
     else if (V0 > -1e17) ci = 0;
     else break;
-    game.decision(`第 ${t} 回合：补满星轨，还是先打法则？`, "评分", cands, ci);
+    game.decision([`第 ${t} 回合：补满星轨，还是先打法则？`, `Turn ${t}: fill the Orbits, or play a Rune first?`], "评分", cands, ci);
     if (acts[ci][0] === "law") {
       for (let q = 0; q < 2; q++) if (outb[q] >= 0) game.placeForm(outb[q]);
       game.lawIdx(bestl);
@@ -775,9 +809,9 @@ function* expertEvalG(game, theta, K, R, sb) {
   if (si[O_PN] > 0) {
     for (let j = 0; j < si[O_PN]; j++) {
       const v = actionValue(si, sf, theta, cfg, K, R, sb, KIND_OPTION, j, -1, -1, 0, 0, 0);
-      cands.push([`选取「${LAW_NAMES[si[O_PO + j]]}」`, v]); acts.push(["opt", j, -1, -1]); yield;
+      { const lid2 = si[O_PO + j]; cands.push([bi(() => lg(`选取「${ln(lid2)}」`, `Pick ${ln(lid2)}`)), v]); } acts.push(["opt", j, -1, -1]); yield;
     }
-    return ["昭示：从 3 张法则中选 1 张", "期望总倍率", cands, acts, plan0, argmax(cands.map(c => c[1]))];
+    return [["昭示：从 3 张法则中选 1 张", "Herald: choose 1 of 3 Runes"], "期望总倍率", cands, acts, plan0, argmax(cands.map(c => c[1]))];
   }
   if (V0 > -1e17) {
     const v = actionValue(si, sf, theta, cfg, K, R, sb, KIND_FINISH, 0, -1, -1, plan0[0], plan0[1], plan0[2]);
@@ -794,10 +828,10 @@ function* expertEvalG(game, theta, K, R, sb) {
     cands.push([lawLabel(lid, cost, [l1, l2]), v]); acts.push(["law", li, l1, l2]); yield;
     if (l1 >= 0 || l2 >= 0) {
       v = actionValue(si, sf, theta, cfg, K, R, sb, KIND_LAW, li, -1, -1, 0, 0, 0);
-      cands.push([lawLabel(lid, cost, [-1, -1]) + "（不提前放牌）", v]); acts.push(["law", li, -1, -1]); yield;
+      { const lb = lawLabel(lid, cost, [-1, -1]); cands.push([[lb[0] + "（不提前放牌）", lb[1] + " (no cards placed first)"], v]); } acts.push(["law", li, -1, -1]); yield;
     }
   }
-  return [`第 ${t} 回合：滚动前瞻（每个候选各模拟 ${R} 局）`, "期望总倍率", cands, acts, plan0, cands.length ? argmax(cands.map(c => c[1])) : -1];
+  return [[`第 ${t} 回合：滚动前瞻（每个候选各模拟 ${R} 局）`, `Turn ${t}: rollout lookahead (${R} simulated games per candidate)`], "期望总倍率", cands, acts, plan0, cands.length ? argmax(cands.map(c => c[1])) : -1];
 }
 function* playExpertG(game, theta, K = 12, R = 200) {
   let dec = 0;
@@ -829,7 +863,7 @@ function playPpo(game, model, topk = 5) {
     let order = Array.from(p.keys()).sort((a, b) => p[b] - p[a]).slice(0, topk).filter(a => mask[a] && p[a] > 1e-4);
     if (!order.length) order = [argmax(p)];
     const a = order[0];
-    game.decision(`第 ${si[O_T]} 回合：网络给出的动作概率`, "概率 %", order.map(x => [ACTION_NAMES[x].replace("（付费）", ""), p[x] * 100]), 0);
+    game.decision([`第 ${si[O_T]} 回合：网络给出的动作概率`, `Turn ${si[O_T]}: action probabilities from the network`], "概率 %", order.map(x => [ACTION_NAMES[x], p[x] * 100]), 0);
     if (a < A_LAW0) game.placeForm(a);
     else if (a < A_OPT0) { const k = a - A_LAW0; game.lawById(k % 7, k < 7); }
     else { const lid = a - A_OPT0; let j = 0; for (; j < si[O_PN]; j++) if (si[O_PO + j] === lid) break; game.pick(j); }
@@ -872,16 +906,16 @@ function* runPolicyG(policy, seed, opts = {}) {
   const g = new Game(CFG, seed);
   if (policy === "param") playParam(g, THETA);
   else if (policy === "expert") yield* playExpertG(g, THETA, 12, opts.R || 200);
-  else { const m = getModel(); if (!m) throw new Error("PPO 权重不可用"); playPpo(g, m); }
+  else { const m = getModel(); if (!m) throw err("PPO 权重不可用", "PPO weights unavailable"); playPpo(g, m); }
   const ep = g.result(policy); ep.id = `${policy}-${seed}`;
   return ep;
 }
 /** 专家建议（生成器）：返回 {title, unit, cands:[[标签, 数值, 是否最优]]}。 */
 function* hintG(game, R = 100) {
-  if (game.done()) throw new Error("本局已结束");
+  if (game.done()) throw err("本局已结束", "This game is over");
   seedRng(game.seed * 7 + game.nact * 131 + 5);
   const [title, unit, cands, , , ci] = yield* expertEvalG(game, THETA, 12, R, (game.seed * 7919 + game.nact * 104729) >>> 0);
-  return { title, unit, cands: cands.map(([lb, v], i) => [lb, Math.round(v * 100) / 100, i === ci ? 1 : 0]) };
+  return { title: title[0], titleEn: title[1], unit, cands: cands.map(([lb, v], i) => [lb[0], Math.round(v * 100) / 100, i === ci ? 1 : 0, lb[1]]) };
 }
 /** 同开局（相同初始手牌与法则）、之后随机事件独立，让程序重复打 n 局（生成器，yield 进度）。 */
 function* policyDistG(policy, seed, n, opts = {}) {
